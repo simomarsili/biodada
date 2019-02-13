@@ -32,15 +32,15 @@ def parse(source, frmt, hmm=True):
     return lilbio.parse(source, frmt, func=preprocess)
 
 
-def filter_redundant(records, thr=0.9):
+def filter_redundant(records, threshold=0.9):
     import pcdhit
-    return pcdhit.filter(records, thr=thr)
+    return pcdhit.filter(records, threshold)
 
 
 @timeit
-def filter_gaps(frame, thr=0.1):
+def filter_gaps(frame, threshold=0.1):
     import cleanset
-    cleaner = cleanset.Cleaner(f0=thr, f1=thr,
+    cleaner = cleanset.Cleaner(f0=threshold, f1=threshold,
                                condition=lambda x: x == '-', axis=0.5)
     return cleaner.fit_transform(frame)
 
@@ -52,13 +52,33 @@ def frame_from_records(records):
 
 
 @timeit
-def dataframe(source, frmt, hmm=True, redundant=0.9, gaps=0.1):
+def dataframe(source, fmt, hmm=True, c=0.9, g=0.1):
+    """Parse a pandas dataframe from an alignment file.
+
+    Parameters
+    ----------
+    source : filepath or file-like
+        The alignment file
+    fmt : str
+        Alignment format. Valid options are: 'fasta', 'stockholm'.
+    hmm : boolean
+        If True, return only uppercase symbols and {-', '*'} symbols.
+    c : float
+        Sequence identity threshold for redundancy filter. 0 < c < 1.
+    g : float
+        Gap fraction threshold for gap filter. 0 <= g <= 1.
+
+    Returns
+    -------
+    dataframe
+        A pandas dataframe.
+    """
     # parse records
-    records = parse(source, frmt, hmm=hmm)
+    records = parse(source, fmt, hmm=hmm)
 
     # filter redundant records via cdhit
-    if redundant:
-        records = filter_redundant(records, thr=redundant)
+    if c:
+        records = filter_redundant(records, c)
 
     # convert records to a dataframe
     df = frame_from_records(records)
@@ -67,10 +87,16 @@ def dataframe(source, frmt, hmm=True, redundant=0.9, gaps=0.1):
     df.columns = range(-1, df.shape[1]-1)
 
     # reduce gappy records/positions
-    if gaps:
-        df = filter_gaps(df, thr=gaps)
+    if g:
+        df = filter_gaps(df, g)
 
     return df
+
+
+@timeit
+def array(source, fmt, hmm=True, c=0.9, g=0.1):
+    df = dataframe(source, fmt, hmm=hmm, c=c, g=g)
+    return df.iloc[:, 1:].values
 
 
 @timeit

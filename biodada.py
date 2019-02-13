@@ -10,13 +10,6 @@ __license__ = 'BSD 3 clause'
 __author__ = 'Simone Marsili <simo.marsili@gmail.com>'
 __all__ = ['dataframe', 'save', 'load']
 
-
-logging.basicConfig(
-    # filename=<filename>,
-    # filemode='a',
-    format='%(module)-10s %(funcName)-20s: %(levelname)-8s %(message)s',
-    datefmt='%H:%M:%S',
-    level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 

@@ -11,6 +11,14 @@ __author__ = 'Simone Marsili <simo.marsili@gmail.com>'
 __all__ = ['dataframe', 'save', 'load']
 
 logger = logging.getLogger(__name__)
+ALPHABETS = {
+    'protein': '-ACDEFGHIKLMNPQRSTVWY',
+    'dna': '-ACGT',
+    'rna': '-ACGU',
+    'protein_u': '-ACDEFGHIKLMNPQRSTVWYBZX',
+    'dna_u': '-ACGTRYMKWSBDHVN',
+    'rna_u': '-ACGURYMKWSBDHVN',
+}
 
 
 def timeit(func):
@@ -46,13 +54,57 @@ def filter_gaps(frame, threshold=0.1):
 
 
 @timeit
+def guess_alphabet(df):
+    # guess
+    from collections import Counter
+    counts = Counter(df.iloc[:, 1:].head(50).values.flatten())
+    max_score = float('-inf')
+    for key, alphabet in ALPHABETS.items():
+        score = score_alphabet(alphabet, counts)
+        if score > max_score:
+            max_score = score
+            guess = key
+    logger.info('Alphabet guess: %r', guess)
+    return ALPHABETS[guess]
+
+
+def score_alphabet(alphabet, counts):
+    import math
+    chars = set(alphabet) - set('*-')
+    score = (sum([counts.get(a, 0) for a in chars]) /
+             math.log(len(alphabet)))
+    logger.debug('alphabet %r score %r', alphabet, score)
+    return score
+
+
+@timeit
+def validate_alphabet(df):
+    valid_records = []
+    null = 0
+    alphabet = df.alphabet
+    alphabet_set = set(alphabet)
+    values = df.iloc[:, 1:].values
+    for index, row in enumerate(values):
+        if set(row) <= alphabet_set:
+            valid_records.append(index)
+        else:
+            null += 1
+    logger.debug('null records: %r', null)
+    # select valid records and reset row indexing
+    df = df.iloc[valid_records]
+    df.alphabet = alphabet
+    df.reset_index(drop=True, inplace=True)
+    return df
+
+
+@timeit
 def frame_from_records(records):
     return pandas.DataFrame.from_records(
         ((rec[0], *list(rec[1])) for rec in records))
 
 
 @timeit
-def dataframe(source, fmt, hmm=True, c=0.9, g=0.1):
+def dataframe(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
     """Parse a pandas dataframe from an alignment file.
 
     Parameters
@@ -89,6 +141,13 @@ def dataframe(source, fmt, hmm=True, c=0.9, g=0.1):
     # reduce gappy records/positions
     if g:
         df = filter_gaps(df, g)
+
+    # check alphabet consistency
+    if alphabet:
+        df.alphabet = alphabet
+    else:
+        df.alphabet = guess_alphabet(df)
+    df = validate_alphabet(df)
 
     return df
 

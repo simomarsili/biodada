@@ -136,7 +136,7 @@ def dataframe(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
     df = frame_from_records(records)
 
     # set dataframe column labels
-    df.columns = range(-1, df.shape[1]-1)
+    df.columns = ['id'] + list(range(df.shape[1]-1))
 
     # reduce gappy records/positions
     if g:
@@ -160,6 +160,7 @@ def array(source, fmt, hmm=True, c=0.9, g=0.1):
 
 @timeit
 def save(df, target):
+    df.columns = [-1] + list(df.columns)[1:]
     df.to_json(target, compression='bz2')
 
 
@@ -169,6 +170,7 @@ def load(source):
     # sort rows/columns by index
     df.sort_index(axis=0, inplace=True)
     df.sort_index(axis=1, inplace=True)
+    df.columns = ['id'] + list(df.columns)[1:]
     return df
 
 

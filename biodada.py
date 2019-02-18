@@ -1,6 +1,7 @@
 import logging
 import pkg_resources
 from functools import wraps
+import numpy
 import pandas
 
 project_name = 'biodada'
@@ -34,6 +35,96 @@ def timeit(func):
     return timed
 
 
+@pandas.api.extensions.register_dataframe_accessor('alignment')
+class Alignment():
+    def __init__(self, pandas_obj):
+        self._obj = pandas_obj
+        self._alphabet = None
+
+    @staticmethod
+    def score_alphabet(alphabet, counts):
+        import math
+        chars = set(alphabet) - set('*-')
+        score = (sum([counts.get(a, 0) for a in chars]) /
+                 math.log(len(alphabet)))
+        logger.debug('alphabet %r score %r', alphabet, score)
+        return score
+
+    @property
+    @timeit
+    def alphabet(self):
+        if not self._alphabet:
+            # guess
+            from collections import Counter
+            counts = Counter(self._obj.iloc[:, 1:].head(50).values.flatten())
+            max_score = float('-inf')
+            for key, alphabet in ALPHABETS.items():
+                score = self.score_alphabet(alphabet, counts)
+                if score > max_score:
+                    max_score = score
+                    guess = key
+            logger.info('Alphabet guess: %r', guess)
+            self._alphabet = ALPHABETS[guess]
+        return self._alphabet
+
+    @alphabet.setter
+    def alphabet(self, alphabet):
+        self._alphabet = alphabet
+
+    @property
+    @timeit
+    def data(self):
+        return self._obj.iloc[:, 1:]
+
+    @timeit
+    def as_array(self, copy=False):
+        return self.alignment.data.to_numpy(dtype='U1', copy=copy)
+
+    @timeit
+    def replace(self, encoding=None):
+        if not encoding:
+            encoding = {c: k for k, c
+                        in enumerate(self.alignment.alphabet)}
+        return self.replace(encoding)
+
+    @timeit
+    def encoder(self, encoder='one-hot', categories=None,
+                dtype=None):
+        """
+        encoding: 'one-hot', 'ordinal'
+        categories: None, auto or list of lists/arrays
+        """
+        from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+        n, p = self._obj.shape
+        if not categories:
+            categories = [list(self.alphabet)] * (p - 1)
+        if encoder == 'one-hot':
+            if dtype is None:
+                dtype = numpy.float64
+            enc = OneHotEncoder(categories=categories, dtype=dtype)
+        elif encoder == 'ordinal':
+            if dtype is None:
+                dtype = numpy.int8
+            enc = OrdinalEncoder(categories=categories, dtype=dtype)
+        return enc
+
+    @timeit
+    def pca(self, n_components=3):
+        from sklearn.pipeline import Pipeline
+        from sklearn.decomposition import PCA as PCA
+        from sklearn.decomposition import TruncatedSVD as tSVD
+        return Pipeline([('encode', self.encoder()),
+                         ('svd', tSVD(n_components=n_components+3,
+                                      algorithm='arpack')),
+                         ('pca', PCA(n_components=n_components))])
+
+
+def copy(df, *args, **kwargs):
+    df1 = df.copy(*args, **kwargs)
+    df1.alignment.alphabet = df.alignment.alphabet
+    return df1
+
+
 def parse(source, frmt, hmm=True):
     import lilbio
     preprocess = lilbio.funcs.only_hmm if hmm else None
@@ -54,34 +145,10 @@ def filter_gaps(frame, threshold=0.1):
 
 
 @timeit
-def guess_alphabet(df):
-    # guess
-    from collections import Counter
-    counts = Counter(df.iloc[:, 1:].head(50).values.flatten())
-    max_score = float('-inf')
-    for key, alphabet in ALPHABETS.items():
-        score = score_alphabet(alphabet, counts)
-        if score > max_score:
-            max_score = score
-            guess = key
-    logger.info('Alphabet guess: %r', guess)
-    return ALPHABETS[guess]
-
-
-def score_alphabet(alphabet, counts):
-    import math
-    chars = set(alphabet) - set('*-')
-    score = (sum([counts.get(a, 0) for a in chars]) /
-             math.log(len(alphabet)))
-    logger.debug('alphabet %r score %r', alphabet, score)
-    return score
-
-
-@timeit
 def validate_alphabet(df):
     valid_records = []
     null = 0
-    alphabet = df.alphabet
+    alphabet = df.alignment.alphabet
     alphabet_set = set(alphabet)
     values = df.iloc[:, 1:].values
     for index, row in enumerate(values):
@@ -92,7 +159,7 @@ def validate_alphabet(df):
     logger.debug('null records: %r', null)
     # select valid records and reset row indexing
     df = df.iloc[valid_records]
-    df.alphabet = alphabet
+    df.alignment.alphabet = alphabet
     df.reset_index(drop=True, inplace=True)
     return df
 
@@ -144,18 +211,10 @@ def dataframe(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
 
     # check alphabet consistency
     if alphabet:
-        df.alphabet = alphabet
-    else:
-        df.alphabet = guess_alphabet(df)
+        df.alignment.alphabet = alphabet
     df = validate_alphabet(df)
 
     return df
-
-
-@timeit
-def array(source, fmt, hmm=True, c=0.9, g=0.1):
-    df = dataframe(source, fmt, hmm=hmm, c=c, g=g)
-    return df.iloc[:, 1:].values
 
 
 @timeit

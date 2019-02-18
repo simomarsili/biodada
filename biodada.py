@@ -113,10 +113,25 @@ class Alignment():
         from sklearn.pipeline import Pipeline
         from sklearn.decomposition import PCA as PCA
         from sklearn.decomposition import TruncatedSVD as tSVD
-        return Pipeline([('encode', self.encoder()),
-                         ('svd', tSVD(n_components=n_components+3,
-                                      algorithm='arpack')),
-                         ('pca', PCA(n_components=n_components))])
+        return Pipeline([
+            ('encode', self.encoder()),
+            ('svd', tSVD(n_components=n_components+3, algorithm='arpack')),
+            ('pca', PCA(n_components=n_components))])
+
+    @timeit
+    def cluster(self, n_clusters, n_components=3):
+        from sklearn.pipeline import Pipeline
+        from sklearn.neighbors import kneighbors_graph
+        from sklearn.cluster import AgglomerativeClustering
+
+        def connectivity(X):
+            return kneighbors_graph(X, n_neighbors=10,
+                                    include_self=False)
+        return Pipeline([
+            ('pca', self.pca(n_components=n_components)),
+            ('cluster', AgglomerativeClustering(n_clusters=n_clusters,
+                                                connectivity=connectivity,
+                                                linkage='ward'))])
 
 
 def copy(df, *args, **kwargs):

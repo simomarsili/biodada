@@ -87,7 +87,6 @@ class Alignment():
                         in enumerate(self.alignment.alphabet)}
         return self.replace(encoding)
 
-    @timeit
     def encoder(self, encoder='one-hot', categories=None,
                 dtype=None):
         """
@@ -108,7 +107,12 @@ class Alignment():
             enc = OrdinalEncoder(categories=categories, dtype=dtype)
         return enc
 
-    @timeit
+    def encoded(self, encoder='one-hot', categories=None,
+                dtype=None):
+        encoder = self.encoder(encoder=encoder, categories=categories,
+                               dtype=dtype)
+        return encoder.fit_transform(self.data)
+
     def pca(self, n_components=3):
         from sklearn.pipeline import Pipeline
         from sklearn.decomposition import PCA as PCA
@@ -118,8 +122,17 @@ class Alignment():
             ('svd', tSVD(n_components=n_components+3, algorithm='arpack')),
             ('pca', PCA(n_components=n_components))])
 
-    @timeit
-    def cluster(self, n_clusters, n_components=3):
+    def principal_components(self, n_components=3, pca=None):
+        from sklearn.exceptions import NotFittedError
+        if not pca:
+            pca = self.pca(n_components=n_components)
+            pca.fit(self.data)
+        try:
+            return pca.transform(self.data)
+        except NotFittedError:
+            raise
+
+    def clustering(self, n_clusters, n_components=3):
         from sklearn.pipeline import Pipeline
         from sklearn.neighbors import kneighbors_graph
         from sklearn.cluster import AgglomerativeClustering
@@ -132,6 +145,18 @@ class Alignment():
             ('cluster', AgglomerativeClustering(n_clusters=n_clusters,
                                                 connectivity=connectivity,
                                                 linkage='ward'))])
+
+    def clusters(self, n_clusters, n_components=3):
+        clustering = self.clustering(n_clusters=n_clusters,
+                                     n_components=n_components)
+        return clustering.fit_predict(self.data)
+
+    def classifier(self, n_neighbors=3):
+        from sklearn.pipeline import Pipeline
+        from sklearn.neighbors import KNeighborsClassifier
+        return Pipeline([
+            ('classifier', KNeighborsClassifier(n_neighbors=3)),
+        ])
 
 
 def copy(df, *args, **kwargs):

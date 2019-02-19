@@ -35,44 +35,11 @@ def timeit(func):
     return timed
 
 
-def encoder(enc='one-hot', categories='auto', dtype=None):
-    """
-    enc: 'one-hot', 'ordinal'
-    categories: None, auto or list of lists/arrays
-    """
-    from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
-    """
-    n, p = self._obj.shape
-    if not categories:
-        categories = [list(self.alphabet)] * (p - 1)
-    """
-    if enc == 'one-hot':
-        if dtype is None:
-            dtype = numpy.float64
-        enc = OneHotEncoder(categories=categories, dtype=dtype)
-    elif enc == 'ordinal':
-        if dtype is None:
-            dtype = numpy.int8
-        enc = OrdinalEncoder(categories=categories, dtype=dtype)
-    return enc
-
-
-def pca(n_components=3):
-        from sklearn.pipeline import Pipeline
-        from sklearn.decomposition import PCA as PCA
-        from sklearn.decomposition import TruncatedSVD as tSVD
-        return Pipeline([
-            ('encode', encoder()),
-            ('svd', tSVD(n_components=n_components+3, algorithm='arpack')),
-            ('pca', PCA(n_components=n_components))])
-
-
 @pandas.api.extensions.register_dataframe_accessor('alignment')
 class Alignment():
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
         self._alphabet = None
-        self._transformer = None
 
     @staticmethod
     def score_alphabet(alphabet, counts):
@@ -100,14 +67,6 @@ class Alignment():
             self._alphabet = ALPHABETS[guess]
         return self._alphabet
 
-    @property
-    def transformer(self):
-        return self._transformer
-
-    @transformer.setter
-    def transformer(self, a):
-        self._transformer = a
-
     @alphabet.setter
     def alphabet(self, alphabet):
         self._alphabet = alphabet
@@ -121,24 +80,55 @@ class Alignment():
     def as_array(self, copy=False):
         return self.alignment.data.to_numpy(dtype='U1', copy=copy)
 
-    def encoded(self, enc='one-hot', categories=None,
-                dtype=None):
-        if not categories:
-            p = self._obj.shape[1] - 1
-            categories = [list(self.alphabet)] * p
-        self.transformer = encoder(enc=enc, categories=categories,
-                                   dtype=dtype)
-        return self.transformer.fit_transform(self.data)
+    @timeit
+    def replace(self, encoding=None):
+        if not encoding:
+            encoding = {c: k for k, c
+                        in enumerate(self.alignment.alphabet)}
+        return self.replace(encoding)
 
-    def principal_components(self, n_components=3, precomputed=None):
+    def encoder(self, encoder='one-hot', categories=None,
+                dtype=None):
+        """
+        encoding: 'one-hot', 'ordinal'
+        categories: None, auto or list of lists/arrays
+        """
+        from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+        n, p = self._obj.shape
+        if not categories:
+            categories = [list(self.alphabet)] * (p - 1)
+        if encoder == 'one-hot':
+            if dtype is None:
+                dtype = numpy.float64
+            enc = OneHotEncoder(categories=categories, dtype=dtype)
+        elif encoder == 'ordinal':
+            if dtype is None:
+                dtype = numpy.int8
+            enc = OrdinalEncoder(categories=categories, dtype=dtype)
+        return enc
+
+    def encoded(self, encoder='one-hot', categories=None,
+                dtype=None):
+        encoder = self.encoder(encoder=encoder, categories=categories,
+                               dtype=dtype)
+        return encoder.fit_transform(self.data)
+
+    def pca(self, n_components=3):
+        from sklearn.pipeline import Pipeline
+        from sklearn.decomposition import PCA as PCA
+        from sklearn.decomposition import TruncatedSVD as tSVD
+        return Pipeline([
+            ('encode', self.encoder()),
+            ('svd', tSVD(n_components=n_components+3, algorithm='arpack')),
+            ('pca', PCA(n_components=n_components))])
+
+    def principal_components(self, n_components=3, pca=None):
         from sklearn.exceptions import NotFittedError
-        if not precomputed:
-            self.transformer = pca(n_components=n_components)
-            self.transformer.fit(self.data)
-        else:
-            self.transformer = precomputed
+        if not pca:
+            pca = self.pca(n_components=n_components)
+            pca.fit(self.data)
         try:
-            return self.transformer.transform(self.data)
+            return pca.transform(self.data)
         except NotFittedError:
             raise
 

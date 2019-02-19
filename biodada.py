@@ -79,7 +79,7 @@ class Alignment():
 
     @timeit
     def as_array(self, copy=False):
-        return self.alignment.data.to_numpy(dtype='U1', copy=copy)
+        return self.data.to_numpy(dtype='U1', copy=copy)
 
     @timeit
     def replace(self, encoding=None):
@@ -161,6 +161,15 @@ class Alignment():
         return Pipeline([
             ('classifier', KNeighborsClassifier(n_neighbors=3)),
         ])
+
+    def classify(self, X, y, n_neighbors=3, transformer=None):
+        classifier = self.classifier().fit(X, y)
+        self.pipe = classifier
+        if not transformer:
+            X1 = self.data
+        else:
+            X1 = transformer.transform(self.data)
+        return classifier.predict(X1)
 
 
 def copy(df, *args, **kwargs):

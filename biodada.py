@@ -40,6 +40,7 @@ class Alignment():
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
         self._alphabet = None
+        self.pipe = None
 
     @staticmethod
     def score_alphabet(alphabet, counts):
@@ -111,6 +112,7 @@ class Alignment():
                 dtype=None):
         encoder = self.encoder(encoder=encoder, categories=categories,
                                dtype=dtype)
+        self.pipe = encoder
         return encoder.fit_transform(self.data)
 
     def pca(self, n_components=3):
@@ -127,6 +129,7 @@ class Alignment():
         if not pca:
             pca = self.pca(n_components=n_components)
             pca.fit(self.data)
+        self.pipe = pca
         try:
             return pca.transform(self.data)
         except NotFittedError:
@@ -149,6 +152,7 @@ class Alignment():
     def clusters(self, n_clusters, n_components=3):
         clustering = self.clustering(n_clusters=n_clusters,
                                      n_components=n_components)
+        self.pipe = clustering
         return clustering.fit_predict(self.data)
 
     def classifier(self, n_neighbors=3):

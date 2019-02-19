@@ -40,7 +40,9 @@ class Alignment():
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
         self._alphabet = None
-        self.pipe = None
+        self.encoder_pipe = None
+        self.pca_pipe = None
+        self.cluster_pipe = None
 
     @staticmethod
     def score_alphabet(alphabet, counts):
@@ -112,8 +114,8 @@ class Alignment():
                 dtype=None):
         encoder = self.encoder(encoder=encoder, categories=categories,
                                dtype=dtype)
-        self.pipe = encoder
-        return encoder.fit_transform(self.data)
+        self.encoder_pipe = encoder.fit(self.data)
+        return encoder.transform(self.data)
 
     def pca(self, n_components=3):
         from sklearn.pipeline import Pipeline
@@ -129,7 +131,7 @@ class Alignment():
         if not pca:
             pca = self.pca(n_components=n_components)
             pca.fit(self.data)
-        self.pipe = pca
+        self.pca_pipe = pca
         try:
             return pca.transform(self.data)
         except NotFittedError:
@@ -152,8 +154,9 @@ class Alignment():
     def clusters(self, n_clusters, n_components=3):
         clustering = self.clustering(n_clusters=n_clusters,
                                      n_components=n_components)
-        self.pipe = clustering
-        return clustering.fit_predict(self.data)
+        labels = clustering.fit_predict(self.data)
+        self.cluster_pipe = clustering
+        return labels
 
     def classifier(self, n_neighbors=3):
         from sklearn.pipeline import Pipeline
@@ -162,9 +165,9 @@ class Alignment():
             ('classifier', KNeighborsClassifier(n_neighbors=3)),
         ])
 
-    def classify(self, X, y, n_neighbors=3, transformer=None):
-        classifier = self.classifier().fit(X, y)
-        self.pipe = classifier
+    def classify(self, labeled_data, n_neighbors=3, transformer=None):
+        classifier = self.classifier().fit(*labeled_data)
+        self.classifier_pipe = classifier
         if not transformer:
             X1 = self.data
         else:

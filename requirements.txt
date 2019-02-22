@@ -1,2 +1,6 @@
-# packageA
-# packageB
+numpy
+pandas
+sklearn
+-e git+git://github.com/simomarsili/little-bio-parser.git#egg=lilbio
+-e git+git://github.com/simomarsili/pcdhit.git#egg=pcdhit
+-e git+git://github.com/simomarsili/cleanser.git#egg=cleanset

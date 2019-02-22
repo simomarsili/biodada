@@ -195,7 +195,7 @@ def filter_redundant(records, threshold=0.9):
 @timeit
 def filter_gaps(frame, threshold=0.1):
     import cleanset
-    cleaner = cleanset.Cleaner(f0=threshold, f1=threshold,
+    cleaner = cleanset.Cleaner(fna=threshold,
                                condition=lambda x: x == '-', axis=0.5)
     return cleaner.fit_transform(frame)
 

@@ -183,7 +183,7 @@ def copy(df, *args, **kwargs):
 
 def parse(source, frmt, hmm=True):
     import lilbio
-    preprocess = lilbio.funcs.only_hmm if hmm else None
+    preprocess = lilbio.uppercase_only if hmm else None
     return lilbio.parse(source, frmt, func=preprocess)
 
 
@@ -196,7 +196,8 @@ def filter_redundant(records, threshold=0.9):
 def filter_gaps(frame, threshold=0.1):
     import cleanset
     cleaner = cleanset.Cleaner(fna=threshold,
-                               condition=lambda x: x == '-', axis=0.5)
+                               condition=lambda x: x == '-' or x == 'X',
+                               axis=0.5)
     return cleaner.fit_transform(frame)
 
 

@@ -194,6 +194,14 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
             X1 = transformer.transform(self.data)
         return classifier.predict(X1)
 
+    def save(self, fp):
+        import json
+        dd = {}
+        dd['columns'] = [-1] + list(self.columns)[1:]
+        records = [(rec[0], ''.join(rec[1:])) for rec in self.itertuples()]
+        dd['records'] = records
+        json.dump(dd, fp=fp)
+
 
 @pandas.api.extensions.register_dataframe_accessor('alignment')
 class Alignment():

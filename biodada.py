@@ -37,7 +37,7 @@ def timeit(func):
 
 
 class PipelinesMixin:
-    """This class stores scikit-learn pipelines.
+    """This class stores scikit-learn pipelines."""
     def encoder(self, encoder='one-hot', categories=None,
                 dtype=None):
         """

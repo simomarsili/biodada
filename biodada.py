@@ -3,6 +3,7 @@ import pkg_resources
 from functools import wraps
 import numpy
 import pandas
+from pandas import DataFrame
 
 project_name = 'biodada'
 __version__ = pkg_resources.require(project_name)[0].version
@@ -33,6 +34,165 @@ def timeit(func):
         logger.debug('%r: %2.4f secs', func, ts1 - ts0)
         return result
     return timed
+
+
+class PipelinesMixin:
+    """This class stores scikit-learn pipelines.
+    def encoder(self, encoder='one-hot', categories=None,
+                dtype=None):
+        """
+        encoding: 'one-hot', 'ordinal'
+        categories: None, auto or list of lists/arrays
+        """
+        from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
+        n, p = self.shape
+        if not categories:
+            categories = [list(self.alphabet)] * (p - 1)
+        if encoder == 'one-hot':
+            if dtype is None:
+                dtype = numpy.float64
+            enc = OneHotEncoder(categories=categories, dtype=dtype)
+        elif encoder == 'ordinal':
+            if dtype is None:
+                dtype = numpy.int8
+            enc = OrdinalEncoder(categories=categories, dtype=dtype)
+        return enc
+
+    def pca(self, n_components=3):
+        from sklearn.pipeline import Pipeline
+        from sklearn.decomposition import PCA as PCA
+        from sklearn.decomposition import TruncatedSVD as tSVD
+        return Pipeline([
+            ('encode', self.encoder()),
+            ('svd', tSVD(n_components=n_components+3, algorithm='arpack')),
+            ('pca', PCA(n_components=n_components))])
+
+    def clustering(self, n_clusters, n_components=3):
+        from sklearn.pipeline import Pipeline
+        from sklearn.neighbors import kneighbors_graph
+        from sklearn.cluster import AgglomerativeClustering
+
+        def connectivity(X):
+            return kneighbors_graph(X, n_neighbors=10,
+                                    include_self=False)
+        return Pipeline([
+            ('pca', self.pca(n_components=n_components)),
+            ('cluster', AgglomerativeClustering(n_clusters=n_clusters,
+                                                connectivity=connectivity,
+                                                linkage='ward'))])
+
+
+class SequenceDataFrame(PipelinesMixin, DataFrame):
+
+    _metadata = ['_alphabet']
+
+    def __init__(self, data=None, index=None, columns=None, dtype=None,
+                 copy=False, alphabet=None):
+        super().__init__(data=data, index=index, columns=columns, dtype=dtype,
+                         copy=copy)
+        self._alphabet = alphabet
+        self.encoder_pipe = None
+        self.pca_pipe = None
+        self.cluster_pipe = None
+
+    @property
+    def _constructor(self):
+        return SequenceDataFrame
+
+    @classmethod
+    def from_sequence_records(cls, records):
+        df = cls(pandas.DataFrame.from_records(
+            ((rec[0], *list(rec[1])) for rec in records)))
+        # set dataframe column labels
+        df.columns = ['id'] + list(range(df.shape[1]-1))
+        return df
+
+    @staticmethod
+    def score_alphabet(alphabet, counts):
+        import math
+        chars = set(alphabet) - set('*-')
+        score = (sum([counts.get(a, 0) for a in chars]) /
+                 math.log(len(alphabet)))
+        logger.debug('alphabet %r score %r', alphabet, score)
+        return score
+
+    @property
+    @timeit
+    def alphabet(self):
+        if not self._alphabet:
+            # guess
+            from collections import Counter
+            counts = Counter(self.iloc[:, 1:].head(50).values.flatten())
+            max_score = float('-inf')
+            for key, alphabet in ALPHABETS.items():
+                score = self.score_alphabet(alphabet, counts)
+                if score > max_score:
+                    max_score = score
+                    guess = key
+            logger.info('Alphabet guess: %r', guess)
+            self._alphabet = ALPHABETS[guess]
+        return self._alphabet
+
+    @alphabet.setter
+    def alphabet(self, alphabet):
+        self._alphabet = alphabet
+
+    @property
+    @timeit
+    def data(self):
+        return self.iloc[:, 1:]
+
+    @timeit
+    def as_array(self, copy=False):
+        return self.data.to_numpy(dtype='U1', copy=copy)
+
+    @timeit
+    def replace(self, encoding=None):
+        if not encoding:
+            encoding = {c: k for k, c
+                        in enumerate(self.alignment.alphabet)}
+        return self.replace(encoding)
+
+    def encoded(self, encoder='one-hot', categories=None,
+                dtype=None):
+        encoder = self.encoder(encoder=encoder, categories=categories,
+                               dtype=dtype)
+        self.encoder_pipe = encoder.fit(self.data)
+        return encoder.transform(self.data)
+
+    def principal_components(self, n_components=3, pca=None):
+        from sklearn.exceptions import NotFittedError
+        if not pca:
+            pca = self.pca(n_components=n_components)
+            pca.fit(self.data)
+        self.pca_pipe = pca
+        try:
+            return pca.transform(self.data)
+        except NotFittedError:
+            raise
+
+    def clusters(self, n_clusters, n_components=3):
+        clustering = self.clustering(n_clusters=n_clusters,
+                                     n_components=n_components)
+        labels = clustering.fit_predict(self.data)
+        self.cluster_pipe = clustering
+        return labels
+
+    def classifier(self, n_neighbors=3):
+        from sklearn.pipeline import Pipeline
+        from sklearn.neighbors import KNeighborsClassifier
+        return Pipeline([
+            ('classifier', KNeighborsClassifier(n_neighbors=3)),
+        ])
+
+    def classify(self, labeled_data, n_neighbors=3, transformer=None):
+        classifier = self.classifier().fit(*labeled_data)
+        self.classifier_pipe = classifier
+        if not transformer:
+            X1 = self.data
+        else:
+            X1 = transformer.transform(self.data)
+        return classifier.predict(X1)
 
 
 @pandas.api.extensions.register_dataframe_accessor('alignment')
@@ -222,12 +382,6 @@ def validate_alphabet(df):
 
 
 @timeit
-def frame_from_records(records):
-    return pandas.DataFrame.from_records(
-        ((rec[0], *list(rec[1])) for rec in records))
-
-
-@timeit
 def dataframe(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
     """Parse a pandas dataframe from an alignment file.
 
@@ -257,10 +411,7 @@ def dataframe(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
         records = filter_redundant(records, c)
 
     # convert records to a dataframe
-    df = frame_from_records(records)
-
-    # set dataframe column labels
-    df.columns = ['id'] + list(range(df.shape[1]-1))
+    df = SequenceDataFrame.from_sequence_records(records)
 
     # reduce gappy records/positions
     if g:

@@ -364,25 +364,32 @@ def load(source):
     return df
 
 
-def scatterplot_3d(X, fig_size=(8, 6), n_points=False, size=10, color=None,
-                   ax=None):
+def scatterplot(X, fig_size=(8, 6), n_points=False, size=10, color=None,
+                ax=None):
     import matplotlib.pyplot as plt
-    from mpl_toolkits.mplot3d import Axes3D
     n, p = X.shape
-    X = X[:, :3]
+    if p > 2:
+        from mpl_toolkits.mplot3d import Axes3D
+        if not ax:
+            fig = plt.figure(1, figsize=fig_size)
+            ax = Axes3D(fig, elev=-150, azim=110)
+    if p == 2:
+        fig, ax = plt.subplots(figsize=fig_size)
+    elif p < 2:
+        raise ValueError('X must be at least 2D')
     if n_points:
         idx = numpy.random.choice(range(n), size=n_points, replace=False)
         X = X[idx]
-    if not ax:
-        fig = plt.figure(1, figsize=fig_size)
-        ax = Axes3D(fig, elev=-150, azim=110)
     XT = X.T
-    prms = {}
+    kwargs = {}
     if color is not None:
         if n_points:
-            prms['c'] = color[idx]
+            kwargs['c'] = color[idx]
         else:
-            prms['c'] = color
-    prms['s'] = size
-    ax.scatter(XT[0], XT[1], XT[2], **prms)
+            kwargs['c'] = color
+    kwargs['s'] = size
+    if p == 2:
+        ax.scatter(XT[0], XT[1], **kwargs)
+    else:
+        ax.scatter(XT[0], XT[1], XT[2], **kwargs)
     return ax

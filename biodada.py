@@ -10,7 +10,7 @@ __version__ = pkg_resources.require(project_name)[0].version
 __copyright__ = 'Copyright (C) 2019 Simone Marsili'
 __license__ = 'BSD 3 clause'
 __author__ = 'Simone Marsili <simo.marsili@gmail.com>'
-__all__ = ['dataframe', 'save', 'load']
+__all__ = ['read_alignment', 'save', 'load']
 
 logger = logging.getLogger(__name__)
 ALPHABETS = {
@@ -194,13 +194,19 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
             X1 = transformer.transform(self.data)
         return classifier.predict(X1)
 
+    @timeit
     def save(self, fp):
         import json
         dd = {}
         dd['columns'] = [-1] + list(self.columns)[1:]
-        records = [(rec[0], ''.join(rec[1:])) for rec in self.itertuples()]
-        dd['records'] = records
+        dd['records'] = list(self.records)
+        dd['alphabet'] = self.alphabet
         json.dump(dd, fp=fp)
+
+    @property
+    def records(self):
+        return ((r[0], ''.join(r[1:])) for r in self.itertuples(index=False,
+                                                                name=None))
 
 
 def copy(df, *args, **kwargs):
@@ -297,14 +303,13 @@ def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
 
 
 @timeit
-def save(df, target):
-    df.columns = [-1] + list(df.columns)[1:]
-    df.to_json(target, compression='bz2')
-
-
-@timeit
 def load(source):
-    df = pandas.read_json(source, compression='bz2')
+    import json
+    dd = json.load(source)
+    df = SequenceDataFrame(([identifier] + list(sequence)
+                            for identifier, sequence in dd['records']),
+                           columns=dd['columns'],
+                           alphabet=dd['alphabet'])
     # sort rows/columns by index
     df.sort_index(axis=0, inplace=True)
     df.sort_index(axis=1, inplace=True)
@@ -315,7 +320,5 @@ def load(source):
 @timeit
 def save_fasta(df, target):
     with open(target, 'w') as fp:
-        for row in df.itertuples(index=False, name=None):
-            title = row[0]
-            seq = ''.join(row[1:])
-            print('>%s\n%s' % (title, seq), file=fp)
+        for header, seq in df.records:
+            print('>%s\n%s' % (header, seq), file=fp)

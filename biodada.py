@@ -11,7 +11,7 @@ __version__ = pkg_resources.require(project_name)[0].version
 __copyright__ = 'Copyright (C) 2019 Simone Marsili'
 __license__ = 'BSD 3 clause'
 __author__ = 'Simone Marsili <simo.marsili@gmail.com>'
-__all__ = ['read_alignment', 'save', 'load']
+__all__ = ['read_alignment', 'load']
 
 logger = logging.getLogger(__name__)
 ALPHABETS = {
@@ -38,17 +38,25 @@ def timeit(func):
 
 
 class PipelinesMixin:
-    """This class stores scikit-learn pipelines."""
-    def encoder(self, encoder='one-hot', categories=None,
-                dtype=None):
+    """Class for scikit-learn pipelines."""
+    def encoder(self, encoder='one-hot', dtype=None):
         """
-        encoding: 'one-hot', 'ordinal'
-        categories: None, auto or list of lists/arrays
+        Encode sequence data into numeric with different techniques.
+
+        Parameters
+        ----------
+        encoder : 'one-hot', 'ordinal'
+            encoder class:sklearn OneHotEncoder or OrdinalEncoder
+        dtype : number type
+            Default: numpy.float64 (one-hot), numpy.int8 (ordinal)
+
+        Returns
+        -------
+        encoder
         """
         from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
         n, p = self.shape
-        if not categories:
-            categories = [list(self.alphabet)] * (p - 1)
+        categories = [list(self.alphabet)] * (p - 1)
         if encoder == 'one-hot':
             if dtype is None:
                 dtype = numpy.float64
@@ -60,6 +68,14 @@ class PipelinesMixin:
         return enc
 
     def pca(self, n_components=3):
+        """Return a pipeline for principal component analysis.
+
+        The pipeline transform steps are:
+        - One-hot encoding of sequence data into a sparse matrix
+        - Truncated SVD on the sparse data matrix.
+          Return output data of dimensionality n_components + 3
+        - PCA. Return output of dimensionality n_components.
+        """
         from sklearn.pipeline import Pipeline
         from sklearn.decomposition import PCA as PCA
         from sklearn.decomposition import TruncatedSVD as tSVD
@@ -147,21 +163,42 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     def as_array(self, copy=False):
         return self.data.to_numpy(dtype='U1', copy=copy)
 
-    @timeit
-    def replace(self, encoding=None):
-        if not encoding:
-            encoding = {c: k for k, c
-                        in enumerate(self.alignment.alphabet)}
-        return self.replace(encoding)
+    def encoded(self, encoder='one-hot', dtype=None):
+        """
+        Encoded sequence data into numeric with different techniques.
 
-    def encoded(self, encoder='one-hot', categories=None,
-                dtype=None):
-        encoder = self.encoder(encoder=encoder, categories=categories,
-                               dtype=dtype)
+        Parameters
+        ----------
+        encoder : 'one-hot', 'ordinal'
+            encoder class:sklearn OneHotEncoder or OrdinalEncoder
+        dtype : number type
+            Default: numpy.float64 (one-hot), numpy.int8 (ordinal)
+
+        Returns
+        -------
+        Encoded data : sparse matrix (one-hot) or numpy array (ordinal)
+            Transformed array
+        """
+        encoder = self.encoder(encoder=encoder, dtype=dtype)
         self.encoder_pipe = encoder.fit(self.data)
         return encoder.transform(self.data)
 
     def principal_components(self, n_components=3, pca=None):
+        """Return `n_components` principal components from PCA.
+
+        See SequenceDataFrame.pca method for details.
+
+        Attributes
+        ----------
+        n_components : int
+            Number of components to keep.
+        pca : a fitted PCA pipeline.
+            If passed, just transform the data with `pca`
+
+        Returns
+        -------
+        array-like, shape=(n_records, n_components)
+        """
         from sklearn.exceptions import NotFittedError
         if not pca:
             pca = self.pca(n_components=n_components)

@@ -362,3 +362,26 @@ def load(source):
     df.sort_index(axis=1, inplace=True)
     df.columns = ['id'] + list(df.columns)[1:]
     return df
+
+
+def scatterplot_3d(X, fig_size=(8, 6), random=False, size=10, labels=None,
+                   ax=None):
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+    n, p = X.shape
+    if random:
+        idx = numpy.random.choice(range(n), size=random, replace=False)
+        X = X[idx]
+    if not ax:
+        fig = plt.figure(1, figsize=fig_size)
+        ax = Axes3D(fig, elev=-150, azim=110)
+    XT = X.T
+    prms = {}
+    if labels is not None:
+        if random:
+            prms['c'] = labels[idx]
+        else:
+            prms['c'] = labels
+    prms['s'] = size
+    ax.scatter(XT[0], XT[1], XT[2], **prms)
+    return ax

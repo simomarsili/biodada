@@ -4,6 +4,7 @@ from functools import wraps
 import numpy
 import pandas
 from pandas import DataFrame
+import gopen
 
 project_name = 'biodada'
 __version__ = pkg_resources.require(project_name)[0].version
@@ -195,13 +196,21 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         return classifier.predict(X1)
 
     @timeit
-    def save(self, fp):
+    def save(self, target):
         import json
+        import codecs
+        from bz2 import BZ2File
         dd = {}
         dd['columns'] = [-1] + list(self.columns)[1:]
         dd['records'] = list(self.records)
         dd['alphabet'] = self.alphabet
-        json.dump(dd, fp=fp)
+        handle = codecs.getwriter('utf8')(BZ2File(target, 'w'))
+        json.dump(dd, fp=handle)
+
+    @timeit
+    def to_fasta(self, fp):
+        for header, seq in self.records:
+            print('>%s\n%s' % (header, seq), file=fp)
 
     @property
     def records(self):
@@ -305,7 +314,8 @@ def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
 @timeit
 def load(source):
     import json
-    dd = json.load(source)
+    with gopen.readable(source) as fp:
+        dd = json.load(fp)
     df = SequenceDataFrame(([identifier] + list(sequence)
                             for identifier, sequence in dd['records']),
                            columns=dd['columns'],
@@ -315,10 +325,3 @@ def load(source):
     df.sort_index(axis=1, inplace=True)
     df.columns = ['id'] + list(df.columns)[1:]
     return df
-
-
-@timeit
-def save_fasta(df, target):
-    with open(target, 'w') as fp:
-        for header, seq in df.records:
-            print('>%s\n%s' % (header, seq), file=fp)

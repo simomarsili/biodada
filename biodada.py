@@ -124,6 +124,15 @@ class PipelinesMixin:
                                                 connectivity=connectivity,
                                                 linkage='ward'))])
 
+    def classifier(self, n_neighbors=3):
+        from sklearn.pipeline import Pipeline
+        from sklearn.neighbors import KNeighborsClassifier
+        return Pipeline([
+            ('classifier', KNeighborsClassifier(n_neighbors=3)),
+        ])
+
+
+
 
 class SequenceDataFrame(PipelinesMixin, DataFrame):
 
@@ -254,13 +263,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
                                      n_components=n_components)
         labels = clustering.fit_predict(self.data)
         return labels
-
-    def classifier(self, n_neighbors=3):
-        from sklearn.pipeline import Pipeline
-        from sklearn.neighbors import KNeighborsClassifier
-        return Pipeline([
-            ('classifier', KNeighborsClassifier(n_neighbors=3)),
-        ])
 
     def classify(self, labeled_data, n_neighbors=3, transformer=None):
         classifier = self.classifier().fit(*labeled_data)

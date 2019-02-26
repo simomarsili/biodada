@@ -15,9 +15,9 @@ INSTALL_REQUIRES = [
     'pandas',
     'sklearn',
     'little-bio-parser @ http://github.com/simomarsili/little-bio-parser/'
-    'archive/develop.tar.gz',
-    'pcdhit @ http://github.com/simomarsili/pcdhit/archive/develop.tar.gz',
-    'cleanset @ http://github.com/simomarsili/cleanset/archive/develop.tar.gz',
+    'archive/master.tar.gz',
+    'pcdhit @ http://github.com/simomarsili/pcdhit/archive/master.tar.gz',
+    'cleanset @ http://github.com/simomarsili/cleanset/archive/master.tar.gz',
 ]
 EXTRAS_REQUIRES = {'test': ['pytest']}
 

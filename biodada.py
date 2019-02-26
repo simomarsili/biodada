@@ -72,6 +72,16 @@ class PipelinesMixin:
         - Truncated SVD on the sparse data matrix.
           Return output data of dimensionality n_components + 3
         - PCA. Return output of dimensionality n_components.
+
+        Attributes
+        ----------
+        n_components : int
+            Number of components to keep.
+
+        Returns
+        -------
+        pca pipeline object.
+
         """
         from sklearn.pipeline import Pipeline
         from sklearn.decomposition import PCA as PCA
@@ -82,6 +92,25 @@ class PipelinesMixin:
             ('pca', PCA(n_components=n_components))])
 
     def clustering(self, n_clusters, n_components=3):
+        """Pipeline for cluster analysis.
+
+        Cluster sequences in the space of principal components using
+        agglomerative clustering with Ward's method. The clustering is
+        performed with connectivity constraints from the k-neighbors grph.
+
+        Parameters
+        ----------
+        n_custers : int
+            The number of clusters.
+        n_components : int
+            Number of principal components to keep in the dimensionality
+            reduction step.
+
+        Returns
+        -------
+        cluster pipeline object
+
+        """
         from sklearn.pipeline import Pipeline
         from sklearn.neighbors import kneighbors_graph
         from sklearn.cluster import AgglomerativeClustering
@@ -195,6 +224,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         Returns
         -------
         array-like, shape=(n_records, n_components)
+
         """
         from sklearn.exceptions import NotFittedError
         if not pca:
@@ -207,6 +237,24 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
             raise
 
     def clusters(self, n_clusters, n_components=3):
+        """For a given number of clusters, return the cluster labels.
+
+        See SequenceDataFrame.clustering for details.
+
+        Parameters
+        ----------
+        n_custers : int
+            The number of clusters.
+        n_components : int
+            Number of principal components to keep in the dimensionality
+            reduction step.
+
+        Returns
+        -------
+        cluster_labels : list
+
+        """
+
         clustering = self.clustering(n_clusters=n_clusters,
                                      n_components=n_components)
         labels = clustering.fit_predict(self.data)

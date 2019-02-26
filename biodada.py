@@ -134,9 +134,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         super().__init__(data=data, index=index, columns=columns, dtype=dtype,
                          copy=copy)
         self._alphabet = alphabet
-        self.encoder_pipe = None
-        self.pca_pipe = None
-        self.cluster_pipe = None
 
     @property
     def _constructor(self):
@@ -206,7 +203,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
             Transformed array
         """
         encoder = self.encoder(encoder=encoder, dtype=dtype)
-        self.encoder_pipe = encoder.fit(self.data)
         return encoder.transform(self.data)
 
     def principal_components(self, n_components=3, pca=None):
@@ -230,7 +226,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         if not pca:
             pca = self.pca(n_components=n_components)
             pca.fit(self.data)
-        self.pca_pipe = pca
         try:
             return pca.transform(self.data)
         except NotFittedError:
@@ -258,7 +253,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         clustering = self.clustering(n_clusters=n_clusters,
                                      n_components=n_components)
         labels = clustering.fit_predict(self.data)
-        self.cluster_pipe = clustering
         return labels
 
     def classifier(self, n_neighbors=3):
@@ -270,7 +264,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
     def classify(self, labeled_data, n_neighbors=3, transformer=None):
         classifier = self.classifier().fit(*labeled_data)
-        self.classifier_pipe = classifier
         if not transformer:
             X1 = self.data
         else:

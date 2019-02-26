@@ -38,39 +38,36 @@ def timeit(func):
 
 
 class PipelinesMixin:
-    """Class for scikit-learn pipelines."""
+    """Scikit-learn pipelines."""
     def encoder(self, encoder='one-hot', dtype=None):
         """
-        Encode sequence data into numeric with different techniques.
+        Encode sequence data into numeric.
 
         Parameters
         ----------
         encoder : 'one-hot', 'ordinal'
-            encoder class:sklearn OneHotEncoder or OrdinalEncoder
+            sklearn encoder class: OneHotEncoder or OrdinalEncoder
         dtype : number type
             Default: numpy.float64 (one-hot), numpy.int8 (ordinal)
 
         Returns
         -------
-        encoder
+        encoder object
+
         """
         from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
-        n, p = self.shape
-        categories = [list(self.alphabet)] * (p - 1)
+        categories = [list(self.alphabet)] * (self.shape[1] - 1)
         if encoder == 'one-hot':
-            if dtype is None:
-                dtype = numpy.float64
-            enc = OneHotEncoder(categories=categories, dtype=dtype)
+            return OneHotEncoder(categories=categories,
+                                 dtype=dtype or numpy.float64)
         elif encoder == 'ordinal':
-            if dtype is None:
-                dtype = numpy.int8
-            enc = OrdinalEncoder(categories=categories, dtype=dtype)
-        return enc
+            return OrdinalEncoder(categories=categories,
+                                  dtype=dtype or numpy.float64)
 
     def pca(self, n_components=3):
-        """Return a pipeline for principal component analysis.
+        """Pipeline for principal component analysis.
 
-        The pipeline transform steps are:
+        The transform steps are:
         - One-hot encoding of sequence data into a sparse matrix
         - Truncated SVD on the sparse data matrix.
           Return output data of dimensionality n_components + 3

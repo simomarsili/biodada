@@ -405,12 +405,12 @@ def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
     # convert records to a dataframe
     df = SequenceDataFrame.from_sequence_records(records, alphabet=alphabet)
 
+    # check alphabet consistency
+    df = validate_alphabet(df)
+
     # reduce gappy records/positions
     if g:
         df = filter_gaps(df, g)
-
-    # check alphabet consistency
-    df = validate_alphabet(df)
 
     return df
 

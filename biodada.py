@@ -147,6 +147,8 @@ class PipelinesMixin:
 class SequenceDataFrame(PipelinesMixin, DataFrame):
     """Dataframe for bio sequence data.
 
+    Parameters
+    ----------
     data : ndarray (structured or homogeneous), Iterable, dict, or DataFrame
         Dict can contain Series, arrays, constants, or list-like objects
     index : Index or array-like

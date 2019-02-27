@@ -145,6 +145,24 @@ class PipelinesMixin:
 
 
 class SequenceDataFrame(PipelinesMixin, DataFrame):
+    """Dataframe for bio sequence data.
+
+    data : ndarray (structured or homogeneous), Iterable, dict, or DataFrame
+        Dict can contain Series, arrays, constants, or list-like objects
+    index : Index or array-like
+        Index to use for resulting frame. Will default to RangeIndex if
+        no indexing information part of input data and no index provided
+    columns : Index or array-like
+        Column labels to use for resulting frame. Will default to
+        ['id'] + list(range(self.shape[1]-1)) if no column labels are provided.
+    dtype : dtype, default None
+        Data type to force. Only a single dtype is allowed. If None, infer
+    copy : boolean, default False
+        Copy data from inputs. Only affects DataFrame / 2d ndarray input
+    alphabet : str
+        Alphabet for the alignment. Default: guess. See biodada.ALPHABETS.
+
+    """
 
     _metadata = ['_alphabet']
 
@@ -152,6 +170,10 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
                  copy=False, alphabet=None):
         super().__init__(data=data, index=index, columns=columns, dtype=dtype,
                          copy=copy)
+
+        if isinstance(self.columns, pandas.RangeIndex):
+            self.columns = ['id'] + list(range(self.shape[1]-1))
+
         self._alphabet = alphabet
 
     @property
@@ -385,8 +407,6 @@ def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
     df = SequenceDataFrame(([identifier] + list(sequence)
                             for identifier, sequence in records),
                            alphabet=alphabet)
-    # set dataframe column labels
-    df.columns = ['id'] + list(range(df.shape[1]-1))
 
     # reduce gappy records/positions
     if g:

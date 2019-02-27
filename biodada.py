@@ -173,6 +173,8 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         super().__init__(data=data, index=index, columns=columns, dtype=dtype,
                          copy=copy)
 
+        logger.debug('has alphabet: %r', hasattr(self, '_alphabet'))
+
         if isinstance(self.columns, pandas.RangeIndex):
             lmax = max(len(x) for x in self[0])
             if lmax == 1:
@@ -188,10 +190,9 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         return SequenceDataFrame
 
     @classmethod
-    def from_sequence_records(cls, records):
-        df = cls(pandas.DataFrame.from_records(
-            ((rec[0], *list(rec[1])) for rec in records)))
-        return df
+    def from_sequence_records(cls, records, alphabet=None):
+        return cls(([identifier] + list(sequence)
+                    for identifier, sequence in records), alphabet=alphabet)
 
     @staticmethod
     def score_alphabet(alphabet, counts):
@@ -408,10 +409,7 @@ def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
         records = filter_redundant(records, c)
 
     # convert records to a dataframe
-    # df = SequenceDataFrame.from_sequence_records(records)
-    df = SequenceDataFrame(([identifier] + list(sequence)
-                            for identifier, sequence in records),
-                           alphabet=alphabet)
+    df = SequenceDataFrame.from_sequence_records(records, alphabet=alphabet)
 
     # reduce gappy records/positions
     if g:

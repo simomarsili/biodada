@@ -174,7 +174,12 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
                          copy=copy)
 
         if isinstance(self.columns, pandas.RangeIndex):
-            self.columns = ['id'] + list(range(self.shape[1]-1))
+            lmax = max(len(x) for x in self[0])
+            if lmax == 1:
+                raise ValueError(
+                    'The first data field must contain sequence identifiers')
+            else:
+                self.columns = ['id'] + list(range(self.shape[1]-1))
 
         self._alphabet = alphabet
 
@@ -186,8 +191,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     def from_sequence_records(cls, records):
         df = cls(pandas.DataFrame.from_records(
             ((rec[0], *list(rec[1])) for rec in records)))
-        # set dataframe column labels
-        df.columns = ['id'] + list(range(df.shape[1]-1))
         return df
 
     @staticmethod

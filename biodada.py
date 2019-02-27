@@ -14,6 +14,7 @@ __author__ = 'Simone Marsili <simo.marsili@gmail.com>'
 __all__ = ['SequenceDataFrame', 'read_alignment', 'load', 'ALPHABETS']
 
 logger = logging.getLogger(__name__)
+
 ALPHABETS = {
     'protein': '-ACDEFGHIKLMNPQRSTVWY',
     'dna': '-ACGT',
@@ -126,11 +127,21 @@ class PipelinesMixin:
                                                 linkage='ward'))])
 
     def classifier(self, n_neighbors=3):
-        from sklearn.pipeline import Pipeline
+        """Return a classifier for sequence data.
+
+        sklearn KNeighborsClassifier (k-nearest neighbors vote)
+
+        Parameters
+        ----------
+        n_neighbors : int, optional (default=5)
+            Number of neighbors to use.
+
+        Returns
+        -------
+        sklearn classifier
+        """
         from sklearn.neighbors import KNeighborsClassifier
-        return Pipeline([
-            ('classifier', KNeighborsClassifier(n_neighbors=3)),
-        ])
+        return KNeighborsClassifier(n_neighbors=3)
 
 
 class SequenceDataFrame(PipelinesMixin, DataFrame):

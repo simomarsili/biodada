@@ -333,12 +333,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
                                                                 name=None))
 
 
-def copy(df, *args, **kwargs):
-    df1 = df.copy(*args, **kwargs)
-    df1.alignment.alphabet = df.alignment.alphabet
-    return df1
-
-
 def parse(source, frmt, hmm=True):
     import lilbio
     preprocess = lilbio.uppercase_only if hmm else None

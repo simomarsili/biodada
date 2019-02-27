@@ -209,7 +209,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         if not self._alphabet:
             # guess
             from collections import Counter
-            counts = Counter(self.iloc[:, 1:].head(50).values.flatten())
+            counts = Counter(self.data[:50].flatten())
             max_score = float('-inf')
             for key, alphabet in ALPHABETS.items():
                 score = self.score_alphabet(alphabet, counts)
@@ -227,11 +227,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     @property
     @timeit
     def data(self):
-        return self.iloc[:, 1:]
-
-    @timeit
-    def as_array(self, copy=False):
-        return self.data.to_numpy(dtype='U1', copy=copy)
+        return self.to_numpy()[:, 1:].astype(dtype='U1')
 
     def encoded(self, encoder='one-hot', dtype=None):
         """
@@ -361,7 +357,7 @@ def validate_alphabet(df):
     valid_records = []
     null = 0
     alphabet_set = set(df.alphabet)
-    for index, row in enumerate(df.as_array()):
+    for index, row in enumerate(df.data):
         if set(row) <= alphabet_set:
             valid_records.append(index)
         else:

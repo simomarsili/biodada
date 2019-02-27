@@ -39,7 +39,7 @@ def timeit(func):
 
 
 class PipelinesMixin:
-    """Scikit-learn pipelines."""
+    """Scikit-learn pipelines for SequenceDataFrame objects."""
     def encoder(self, encoder='one-hot', dtype=None):
         """
         Return a transformer encoding sequence data into numeric.

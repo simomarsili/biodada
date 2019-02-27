@@ -93,16 +93,16 @@ class PipelinesMixin:
             ('pca', PCA(n_components=n_components))])
 
     def clustering(self, n_clusters, n_components=3):
-        """Pipeline for cluster analysis.
+        """Return a cluster estimator for sequence data.
 
-        Cluster sequences in the space of principal components using
-        agglomerative clustering with Ward's method. The clustering is
-        performed with connectivity constraints from the k-neighbors grph.
+        Agglomerative clustering of sequences in principal components space
+        with Ward's method. Connectivity constraints from the k-neighbors
+        graph.
 
         Parameters
         ----------
         n_custers : int
-            The number of clusters.
+            The target number of clusters.
         n_components : int
             Number of principal components to keep in the dimensionality
             reduction step.

@@ -65,9 +65,10 @@ class PipelinesMixin:
                                   dtype=dtype or numpy.float64)
 
     def pca(self, n_components=3):
-        """Pipeline for principal component analysis.
+        """
+        Return a transformer encoding sequence data into principal components.
 
-        The transform steps are:
+        The pipeline steps are:
         - One-hot encoding of sequence data into a sparse matrix
         - Truncated SVD on the sparse data matrix.
           Return output data of dimensionality n_components + 3
@@ -80,7 +81,7 @@ class PipelinesMixin:
 
         Returns
         -------
-        pca pipeline object.
+        sklearn transformer
 
         """
         from sklearn.pipeline import Pipeline

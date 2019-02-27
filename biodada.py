@@ -11,7 +11,7 @@ __version__ = pkg_resources.require(project_name)[0].version
 __copyright__ = 'Copyright (C) 2019 Simone Marsili'
 __license__ = 'BSD 3 clause'
 __author__ = 'Simone Marsili <simo.marsili@gmail.com>'
-__all__ = ['read_alignment', 'load']
+__all__ = ['SequenceDataFrame', 'read_alignment', 'load', 'ALPHABETS']
 
 logger = logging.getLogger(__name__)
 ALPHABETS = {
@@ -41,7 +41,7 @@ class PipelinesMixin:
     """Scikit-learn pipelines."""
     def encoder(self, encoder='one-hot', dtype=None):
         """
-        Encode sequence data into numeric.
+        Return a transformer encoding sequence data into numeric.
 
         Parameters
         ----------
@@ -52,7 +52,7 @@ class PipelinesMixin:
 
         Returns
         -------
-        encoder object
+        sklearn transformer
 
         """
         from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
@@ -130,8 +130,6 @@ class PipelinesMixin:
         return Pipeline([
             ('classifier', KNeighborsClassifier(n_neighbors=3)),
         ])
-
-
 
 
 class SequenceDataFrame(PipelinesMixin, DataFrame):

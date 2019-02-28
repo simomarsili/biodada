@@ -202,21 +202,23 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         logger.debug('alphabet %r score %r', alphabet, score)
         return score
 
+    def guess_alphabet(self):
+        from collections import Counter
+        counts = Counter(self.data[:50].flatten())
+        max_score = float('-inf')
+        for key, alphabet in ALPHABETS.items():
+            score = self.score_alphabet(alphabet, counts)
+            if score > max_score:
+                max_score = score
+                guess = key
+        logger.info('Alphabet guess: %r', guess)
+        return ALPHABETS[guess]
+
     @property
     @timeit
     def alphabet(self):
         if not self._alphabet:
-            # guess
-            from collections import Counter
-            counts = Counter(self.data[:50].flatten())
-            max_score = float('-inf')
-            for key, alphabet in ALPHABETS.items():
-                score = self.score_alphabet(alphabet, counts)
-                if score > max_score:
-                    max_score = score
-                    guess = key
-            logger.info('Alphabet guess: %r', guess)
-            self._alphabet = ALPHABETS[guess]
+            self._alphabet = self.guess_alphabet()
         return self._alphabet
 
     @alphabet.setter

@@ -145,24 +145,14 @@ class PipelinesMixin:
 
 
 class SequenceDataFrame(PipelinesMixin, DataFrame):
-    """Dataframe for bio sequence data.
+    """
+    In addition to the standard DataFrame constructor arguments,
+    SequenceDataFrame also accepts the following keyword arguments:
 
     Parameters
     ----------
-    data : ndarray (structured or homogeneous), Iterable, dict, or DataFrame
-        Dict can contain Series, arrays, constants, or list-like objects
-    index : Index or array-like
-        Index to use for resulting frame. Will default to RangeIndex if
-        no indexing information part of input data and no index provided
-    columns : Index or array-like
-        Column labels to use for resulting frame. Will default to
-        ['id'] + list(range(self.shape[1]-1)) if no column labels are provided.
-    dtype : dtype, default None
-        Data type to force. Only a single dtype is allowed. If None, infer
-    copy : boolean, default False
-        Copy data from inputs. Only affects DataFrame / 2d ndarray input
     alphabet : str
-        Alphabet for the alignment. Default: guess. See biodada.ALPHABETS.
+        Alphabet for the alignment. Default: None. See biodada.ALPHABETS.
 
     """
 

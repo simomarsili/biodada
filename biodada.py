@@ -175,6 +175,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
         super().__init__(*args, **kwargs)
 
+        # set column labels
         if isinstance(self.columns, pandas.RangeIndex):
             lmax = max(len(x) for x in self[0])
             if lmax == 1:
@@ -189,12 +190,17 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
     @staticmethod
     def check_alphabet_records(records, alphabet):
+        """Filter out records not consistent with alphabet."""
         alphabet_set = set(alphabet)
         return (r for r in records if set(r[1]) <= alphabet_set)
 
     @classmethod
     def from_sequence_records(cls, records, alphabet=None):
-        """Return a SequenceDataFrame from records iterable."""
+        """
+        Return a SequenceDataFrame from records iterable.
+
+        If alphabet, filter out records with symbols not in alphabet.
+        """
         if alphabet:
             records = cls.check_alphabet_records(records, alphabet)
         return cls(([identifier] + list(sequence)
@@ -204,12 +210,18 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     @property
     @timeit
     def data(self):
-        """Sequences as array of one-letter codes."""
+        """Return an ndarray of one-letter codes."""
         return self.to_numpy(copy=False, dtype='U1')[:, 1:]
+
+    @property
+    def records(self):
+        """Iterable of frame records."""
+        return ((r[0], ''.join(r[1:]))
+                for r in self.itertuples(index=False, name=None))
 
     def encoded(self, encoder='one-hot', dtype=None):
         """
-        Encoded sequence data into numeric with different techniques.
+        Return sequence data encoded into integer labels.
 
         Parameters
         ----------
@@ -227,7 +239,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         return encoder.fit_transform(self.data)
 
     def principal_components(self, n_components=3, pca=None):
-        """Return `n_components` principal components from PCA.
+        """Return n_components principal components from PCA.
 
         See SequenceDataFrame.pca method for details.
 
@@ -259,11 +271,11 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
         Parameters
         ----------
-        n_custers : int
+        n_clusters : int
             The number of clusters.
         n_components : int
             Number of principal components to keep in the dimensionality
-            reduction step.
+            reduction pre-processing step.
 
         Returns
         -------
@@ -300,14 +312,8 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         handle = codecs.getwriter('utf8')(BZ2File(target, 'w'))
         json.dump(dd, fp=handle)
 
-    @property
-    def records(self):
-        """Iterable of frame records."""
-        return ((r[0], ''.join(r[1:]))
-                for r in self.itertuples(index=False, name=None))
 
-
-def parse(source, frmt, uppercase=True):
+def parse_records(source, frmt, uppercase=True):
     """Parse records from source."""
     import lilbio  # pylint: disable=import-error
     preprocess = lilbio.uppercase_only if uppercase else None
@@ -398,7 +404,7 @@ def read_alignment(source, fmt, uppercase=True, c=0.9, g=0.1, alphabet=None):
     """
     import itertools
     # parse records
-    records = parse(source, fmt, uppercase=uppercase)
+    records = parse_records(source, fmt, uppercase=uppercase)
 
     # filter redundant records via cdhit
     if c:

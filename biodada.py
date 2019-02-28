@@ -338,24 +338,7 @@ def filter_gaps(frame, threshold=0.1):
     return frame
 
 
-@timeit
-def validate_alphabet(df):
-    valid_records = []
-    null = 0
-    alphabet_set = set(df.alphabet)
-    for index, row in enumerate(df.data):
-        if set(row) <= alphabet_set:
-            valid_records.append(index)
-        else:
-            null += 1
-    logger.debug('null records: %r', null)
-    # select valid records and reset row indexing
-    df = df.iloc[valid_records]
-    df.reset_index(drop=True, inplace=True)
-    return df
-
-
-def score_alphabet(alphabet, counts):
+def _score_alphabet(alphabet, counts):
     """Score for alphabet given counts."""
     import math
     chars = set(alphabet) - set('*-')
@@ -372,7 +355,7 @@ def guess_alphabet(records):
     counts = Counter(data)
     max_score = float('-inf')
     for key, alphabet in ALPHABETS.items():
-        score = score_alphabet(alphabet, counts)
+        score = _score_alphabet(alphabet, counts)
         if score > max_score:
             max_score = score
             guess = key

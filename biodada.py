@@ -193,9 +193,16 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     def _constructor(self):
         return SequenceDataFrame
 
+    @staticmethod
+    def check_alphabet_records(records, alphabet):
+        alphabet_set = set(alphabet)
+        return (r for r in records if set(r[1]) <= alphabet_set)
+
     @classmethod
     def from_sequence_records(cls, records, alphabet=None):
         """Return a SequenceDataFrame from records iterable."""
+        if alphabet:
+            records = cls.check_alphabet_records(records, alphabet)
         return cls(([identifier] + list(sequence)
                     for identifier, sequence in records),
                    alphabet=alphabet)
@@ -410,9 +417,6 @@ def read_alignment(source, fmt, uppercase=True, c=0.9, g=0.1, alphabet=None):
 
     # convert records to a dataframe
     df = SequenceDataFrame.from_sequence_records(records, alphabet=alphabet)
-
-    # check alphabet consistency
-    df = validate_alphabet(df)
 
     # reduce gappy records/positions
     if g:

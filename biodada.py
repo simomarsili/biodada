@@ -1,10 +1,12 @@
+"""SequenceDataFrame class and related functions."""
+
 import logging
 import pkg_resources
 from functools import wraps
 import numpy
 import pandas
 from pandas import DataFrame
-import gopen
+import gopen  # pylint: disable=import-error
 
 project_name = 'biodada'
 __version__ = pkg_resources.require(project_name)[0].version
@@ -40,7 +42,7 @@ def timeit(func):
     return timed
 
 
-class PipelinesMixin:
+class PipelinesMixin(object):  # pytlint: disable=no-init
     """Scikit-learn pipelines for SequenceDataFrame objects."""
 
     def encoder(self, encoder='one-hot', dtype=None):
@@ -123,6 +125,7 @@ class PipelinesMixin:
         from sklearn.cluster import AgglomerativeClustering
 
         def connectivity(X):
+            """Return k-neighbors graph."""
             return kneighbors_graph(X, n_neighbors=10, include_self=False)
 
         return Pipeline([('pca', self.pca(n_components=n_components)),
@@ -147,10 +150,10 @@ class PipelinesMixin:
         sklearn classifier
         """
         from sklearn.neighbors import KNeighborsClassifier
-        return KNeighborsClassifier(n_neighbors=3)
+        return KNeighborsClassifier(n_neighbors=n_neighbors)
 
 
-class SequenceDataFrame(PipelinesMixin, DataFrame):
+class SequenceDataFrame(PipelinesMixin, DataFrame):  # pylint: disable=too-many-ancestors
     """
     In addition to the standard DataFrame constructor arguments,
     SequenceDataFrame also accepts the following keyword arguments:
@@ -192,6 +195,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
     @classmethod
     def from_sequence_records(cls, records, alphabet=None):
+        """Return a SequenceDataFrame from records iterable."""
         return cls(([identifier] + list(sequence)
                     for identifier, sequence in records),
                    alphabet=alphabet)
@@ -199,6 +203,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     @property
     @timeit
     def data(self):
+        """Sequences as array of one-letter codes."""
         return self.to_numpy(copy=False, dtype='U1')[:, 1:]
 
     def encoded(self, encoder='one-hot', dtype=None):
@@ -271,7 +276,9 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         return labels
 
     def classify(self, labeled_data, n_neighbors=3, transformer=None):
-        classifier = self.classifier().fit(*labeled_data)
+        """Classify records from labeled data."""
+        classifier = self.classifier(n_neighbors=n_neighbors).fit(
+            *labeled_data)
         if not transformer:
             X1 = self.data
         else:
@@ -280,6 +287,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
     @timeit
     def save(self, target):
+        """Save frame as bzipped json."""
         import json
         import codecs
         from bz2 import BZ2File
@@ -290,31 +298,37 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         handle = codecs.getwriter('utf8')(BZ2File(target, 'w'))
         json.dump(dd, fp=handle)
 
+    """
     @timeit
     def to_fasta(self, fp):
         for header, seq in self.records:
             print('>%s\n%s' % (header, seq), file=fp)
+    """
 
     @property
     def records(self):
+        """Iterable of frame records."""
         return ((r[0], ''.join(r[1:]))
                 for r in self.itertuples(index=False, name=None))
 
 
 def parse(source, frmt, hmm=True):
-    import lilbio
+    """Parse records from source."""
+    import lilbio  # pylint: disable=import-error
     preprocess = lilbio.uppercase_only if hmm else None
     return lilbio.parse(source, frmt, func=preprocess)
 
 
 def filter_redundant(records, threshold=0.9):
-    import pcdhit
+    """Return an iterable of non-redundant records."""
+    import pcdhit  # pylint: disable=import-error
     return pcdhit.filter(records, threshold)
 
 
 @timeit
 def filter_gaps(frame, threshold=0.1):
-    import cleanset
+    """Return a copy of frame after removing gappy records/positions."""
+    import cleanset  # pylint: disable=import-error
     logger.debug('start filtering gaps')
     cleaner = cleanset.Cleaner(
         fna=threshold, condition=lambda x: x == '-' or x == 'X', axis=0.5)
@@ -350,7 +364,7 @@ def score_alphabet(alphabet, counts):
 
 def guess_alphabet(records):
     from collections import Counter
-    data = numpy.array([list(seq) for head, seq in records],
+    data = numpy.array([list(record[1]) for record in records],
                        dtype='U1').flatten()
     counts = Counter(data)
     max_score = float('-inf')
@@ -364,7 +378,7 @@ def guess_alphabet(records):
 
 
 @timeit
-def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
+def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):  # pylint: disable=too-many-arguments
     """Parse a pandas dataframe from an alignment file.
 
     Parameters
@@ -427,7 +441,7 @@ def load(source):
     return df
 
 
-def scatterplot(X,
+def scatterplot(X,  # pylint: disable=too-many-arguments
                 fig_size=(8, 6),
                 n_points=False,
                 size=10,

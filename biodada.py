@@ -27,6 +27,7 @@ ALPHABETS = {
 
 def timeit(func):
     """Timeit decorator."""
+
     @wraps(func)
     def timed(*args, **kwargs):
         import time
@@ -35,11 +36,13 @@ def timeit(func):
         ts1 = time.time()
         logger.debug('%r: %2.4f secs', func, ts1 - ts0)
         return result
+
     return timed
 
 
 class PipelinesMixin:
     """Scikit-learn pipelines for SequenceDataFrame objects."""
+
     def encoder(self, encoder='one-hot', dtype=None):
         """
         Return a transformer encoding sequence data into numeric.
@@ -59,11 +62,11 @@ class PipelinesMixin:
         from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
         categories = [list(self.alphabet)] * (self.shape[1] - 1)
         if encoder == 'one-hot':
-            return OneHotEncoder(categories=categories,
-                                 dtype=dtype or numpy.float64)
+            return OneHotEncoder(
+                categories=categories, dtype=dtype or numpy.float64)
         elif encoder == 'ordinal':
-            return OrdinalEncoder(categories=categories,
-                                  dtype=dtype or numpy.float64)
+            return OrdinalEncoder(
+                categories=categories, dtype=dtype or numpy.float64)
 
     def pca(self, n_components=3):
         """
@@ -88,10 +91,12 @@ class PipelinesMixin:
         from sklearn.pipeline import Pipeline
         from sklearn.decomposition import PCA as PCA
         from sklearn.decomposition import TruncatedSVD as tSVD
-        return Pipeline([
-            ('encode', self.encoder()),
-            ('svd', tSVD(n_components=n_components+3, algorithm='arpack')),
-            ('pca', PCA(n_components=n_components))])
+        return Pipeline([('encode', self.encoder()),
+                         ('svd',
+                          tSVD(
+                              n_components=n_components + 3,
+                              algorithm='arpack')),
+                         ('pca', PCA(n_components=n_components))])
 
     def clustering(self, n_clusters, n_components=3):
         """Return a cluster estimator for sequence data.
@@ -118,13 +123,14 @@ class PipelinesMixin:
         from sklearn.cluster import AgglomerativeClustering
 
         def connectivity(X):
-            return kneighbors_graph(X, n_neighbors=10,
-                                    include_self=False)
-        return Pipeline([
-            ('pca', self.pca(n_components=n_components)),
-            ('cluster', AgglomerativeClustering(n_clusters=n_clusters,
-                                                connectivity=connectivity,
-                                                linkage='ward'))])
+            return kneighbors_graph(X, n_neighbors=10, include_self=False)
+
+        return Pipeline([('pca', self.pca(n_components=n_components)),
+                         ('cluster',
+                          AgglomerativeClustering(
+                              n_clusters=n_clusters,
+                              connectivity=connectivity,
+                              linkage='ward'))])
 
     def classifier(self, n_neighbors=3):
         """Return a classifier for sequence data.
@@ -175,7 +181,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
                 raise ValueError(
                     'The first data field must contain sequence identifiers')
             else:
-                self.columns = ['id'] + list(range(self.shape[1]-1))
+                self.columns = ['id'] + list(range(self.shape[1] - 1))
 
         if alphabet:
             self.alphabet = alphabet
@@ -187,7 +193,8 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     @classmethod
     def from_sequence_records(cls, records, alphabet=None):
         return cls(([identifier] + list(sequence)
-                    for identifier, sequence in records), alphabet=alphabet)
+                    for identifier, sequence in records),
+                   alphabet=alphabet)
 
     @property
     @timeit
@@ -258,8 +265,8 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
         """
 
-        clustering = self.clustering(n_clusters=n_clusters,
-                                     n_components=n_components)
+        clustering = self.clustering(
+            n_clusters=n_clusters, n_components=n_components)
         labels = clustering.fit_predict(self.data)
         return labels
 
@@ -290,8 +297,8 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
     @property
     def records(self):
-        return ((r[0], ''.join(r[1:])) for r in self.itertuples(index=False,
-                                                                name=None))
+        return ((r[0], ''.join(r[1:]))
+                for r in self.itertuples(index=False, name=None))
 
 
 def parse(source, frmt, hmm=True):
@@ -309,9 +316,8 @@ def filter_redundant(records, threshold=0.9):
 def filter_gaps(frame, threshold=0.1):
     import cleanset
     logger.debug('start filtering gaps')
-    cleaner = cleanset.Cleaner(fna=threshold,
-                               condition=lambda x: x == '-' or x == 'X',
-                               axis=0.5)
+    cleaner = cleanset.Cleaner(
+        fna=threshold, condition=lambda x: x == '-' or x == 'X', axis=0.5)
     frame = cleaner.fit_transform(frame)
     logger.debug('stop filtering gaps')
     return frame
@@ -337,8 +343,7 @@ def validate_alphabet(df):
 def score_alphabet(alphabet, counts):
     import math
     chars = set(alphabet) - set('*-')
-    score = (sum([counts.get(a, 0) for a in chars]) /
-             math.log(len(alphabet)))
+    score = (sum([counts.get(a, 0) for a in chars]) / math.log(len(alphabet)))
     logger.debug('alphabet %r score %r', alphabet, score)
     return score
 
@@ -422,7 +427,11 @@ def load(source):
     return df
 
 
-def scatterplot(X, fig_size=(8, 6), n_points=False, size=10, color=None,
+def scatterplot(X,
+                fig_size=(8, 6),
+                n_points=False,
+                size=10,
+                color=None,
                 ax=None):
     import matplotlib.pyplot as plt
     n, p = X.shape

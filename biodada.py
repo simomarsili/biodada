@@ -168,10 +168,9 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
     _metadata = ['_alphabet']
 
-    def __init__(self, data=None, index=None, columns=None, dtype=None,
-                 copy=False, alphabet=None):
-        super().__init__(data=data, index=index, columns=columns, dtype=dtype,
-                         copy=copy)
+    def __init__(self, *args, **kwargs):
+        alphabet = kwargs.pop('alphabet', None)
+        super().__init__(*args, **kwargs)
 
         logger.debug('has alphabet: %r', hasattr(self, '_alphabet'))
 

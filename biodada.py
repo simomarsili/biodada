@@ -161,7 +161,9 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     def __init__(self, *args, **kwargs):
 
         alphabet = kwargs.pop('alphabet', None)
+
         logger.debug('init SequenceDataFrame, alphabet: %r', alphabet)
+
         if not hasattr(self, 'alphabet'):
             self.alphabet = None
 
@@ -190,7 +192,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     @property
     @timeit
     def data(self):
-        return self.to_numpy()[:, 1:].astype(dtype='U1')
+        return self.to_numpy(copy=False, dtype='U1')[:, 1:]
 
     def encoded(self, encoder='one-hot', dtype=None):
         """

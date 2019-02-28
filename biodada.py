@@ -166,13 +166,16 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
     """
 
-    _metadata = ['_alphabet']
+    _metadata = ['alphabet']
 
     def __init__(self, *args, **kwargs):
-        alphabet = kwargs.pop('alphabet', None)
-        super().__init__(*args, **kwargs)
 
-        logger.debug('has alphabet: %r', hasattr(self, '_alphabet'))
+        alphabet = kwargs.pop('alphabet', None)
+        logger.debug('init SequenceDataFrame, alphabet: %r', alphabet)
+        if not hasattr(self, 'alphabet'):
+            self.alphabet = None
+
+        super().__init__(*args, **kwargs)
 
         if isinstance(self.columns, pandas.RangeIndex):
             lmax = max(len(x) for x in self[0])
@@ -182,7 +185,8 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
             else:
                 self.columns = ['id'] + list(range(self.shape[1]-1))
 
-        self._alphabet = alphabet
+        if alphabet:
+            self.alphabet = alphabet
 
     @property
     def _constructor(self):
@@ -192,38 +196,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     def from_sequence_records(cls, records, alphabet=None):
         return cls(([identifier] + list(sequence)
                     for identifier, sequence in records), alphabet=alphabet)
-
-    @staticmethod
-    def score_alphabet(alphabet, counts):
-        import math
-        chars = set(alphabet) - set('*-')
-        score = (sum([counts.get(a, 0) for a in chars]) /
-                 math.log(len(alphabet)))
-        logger.debug('alphabet %r score %r', alphabet, score)
-        return score
-
-    def guess_alphabet(self):
-        from collections import Counter
-        counts = Counter(self.data[:50].flatten())
-        max_score = float('-inf')
-        for key, alphabet in ALPHABETS.items():
-            score = self.score_alphabet(alphabet, counts)
-            if score > max_score:
-                max_score = score
-                guess = key
-        logger.info('Alphabet guess: %r', guess)
-        return ALPHABETS[guess]
-
-    @property
-    @timeit
-    def alphabet(self):
-        if not self._alphabet:
-            self._alphabet = self.guess_alphabet()
-        return self._alphabet
-
-    @alphabet.setter
-    def alphabet(self, alphabet):
-        self._alphabet = alphabet
 
     @property
     @timeit
@@ -370,6 +342,30 @@ def validate_alphabet(df):
     return df
 
 
+def score_alphabet(alphabet, counts):
+    import math
+    chars = set(alphabet) - set('*-')
+    score = (sum([counts.get(a, 0) for a in chars]) /
+             math.log(len(alphabet)))
+    logger.debug('alphabet %r score %r', alphabet, score)
+    return score
+
+
+def guess_alphabet(records):
+    from collections import Counter
+    data = numpy.array([list(seq) for head, seq in records],
+                       dtype='U1').flatten()
+    counts = Counter(data)
+    max_score = float('-inf')
+    for key, alphabet in ALPHABETS.items():
+        score = score_alphabet(alphabet, counts)
+        if score > max_score:
+            max_score = score
+            guess = key
+    logger.info('Alphabet guess: %r', guess)
+    return ALPHABETS[guess]
+
+
 @timeit
 def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
     """Parse a pandas dataframe from an alignment file.
@@ -392,12 +388,18 @@ def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):
     dataframe
         A pandas dataframe.
     """
+    import itertools
     # parse records
     records = parse(source, fmt, hmm=hmm)
 
     # filter redundant records via cdhit
     if c:
         records = filter_redundant(records, c)
+
+    if not alphabet:
+        records_head = itertools.islice(records, 50)
+        alphabet = guess_alphabet(records_head)
+        records = itertools.chain(records_head, records)
 
     # convert records to a dataframe
     df = SequenceDataFrame.from_sequence_records(records, alphabet=alphabet)

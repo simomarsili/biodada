@@ -153,7 +153,7 @@ class PipelinesMixin(object):  # pytlint: disable=no-init
         return KNeighborsClassifier(n_neighbors=n_neighbors)
 
 
-class SequenceDataFrame(PipelinesMixin, DataFrame):  # pylint: disable=too-many-ancestors
+class SequenceDataFrame(PipelinesMixin, DataFrame):
     """
     In addition to the standard DataFrame constructor arguments,
     SequenceDataFrame also accepts the following keyword arguments:
@@ -292,6 +292,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):  # pylint: disable=too-many-
         import codecs
         from bz2 import BZ2File
         dd = {}
+        dd['index'] = list(self.index)
         dd['columns'] = [-1] + list(self.columns)[1:]
         dd['records'] = list(self.records)
         dd['alphabet'] = self.alphabet
@@ -305,10 +306,10 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):  # pylint: disable=too-many-
                 for r in self.itertuples(index=False, name=None))
 
 
-def parse(source, frmt, hmm=True):
+def parse(source, frmt, uppercase=True):
     """Parse records from source."""
     import lilbio  # pylint: disable=import-error
-    preprocess = lilbio.uppercase_only if hmm else None
+    preprocess = lilbio.uppercase_only if uppercase else None
     return lilbio.parse(source, frmt, func=preprocess)
 
 
@@ -373,7 +374,7 @@ def guess_alphabet(records):
 
 
 @timeit
-def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):  # pylint: disable=too-many-arguments
+def read_alignment(source, fmt, uppercase=True, c=0.9, g=0.1, alphabet=None):
     """Parse a pandas dataframe from an alignment file.
 
     Parameters
@@ -382,7 +383,7 @@ def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):  # pylin
         The alignment file
     fmt : str
         Alignment format. Valid options are: 'fasta', 'stockholm'.
-    hmm : boolean
+    uppercase : boolean
         If True, return only uppercase symbols and {-', '*'} symbols.
     c : float
         Sequence identity threshold for redundancy filter. 0 < c < 1.
@@ -396,7 +397,7 @@ def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):  # pylin
     """
     import itertools
     # parse records
-    records = parse(source, fmt, hmm=hmm)
+    records = parse(source, fmt, uppercase=uppercase)
 
     # filter redundant records via cdhit
     if c:
@@ -428,6 +429,7 @@ def load(source):
         dd = json.load(fp)
     df = SequenceDataFrame(([identifier] + list(sequence)
                             for identifier, sequence in dd['records']),
+                           index=dd['index'],
                            columns=dd['columns'],
                            alphabet=dd['alphabet'])
     # sort rows/columns by index

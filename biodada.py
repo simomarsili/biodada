@@ -169,9 +169,9 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
     def __init__(self, *args, **kwargs):
 
-        alphabet = kwargs.pop('alphabet', None)
+        self.alphabet = kwargs.pop('alphabet', None)
 
-        logger.debug('init SequenceDataFrame, alphabet: %r', alphabet)
+        logger.debug('init SequenceDataFrame, alphabet: %r', self.alphabet)
 
         super().__init__(*args, **kwargs)
 
@@ -182,9 +182,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
                     'The first data field must contain sequence identifiers')
             else:
                 self.columns = ['id'] + list(range(self.shape[1] - 1))
-
-        if alphabet:
-            self.alphabet = alphabet
 
     @property
     def _constructor(self):

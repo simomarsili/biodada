@@ -298,13 +298,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):  # pylint: disable=too-many-
         handle = codecs.getwriter('utf8')(BZ2File(target, 'w'))
         json.dump(dd, fp=handle)
 
-    """
-    @timeit
-    def to_fasta(self, fp):
-        for header, seq in self.records:
-            print('>%s\n%s' % (header, seq), file=fp)
-    """
-
     @property
     def records(self):
         """Iterable of frame records."""
@@ -355,6 +348,7 @@ def validate_alphabet(df):
 
 
 def score_alphabet(alphabet, counts):
+    """Score for alphabet given counts."""
     import math
     chars = set(alphabet) - set('*-')
     score = (sum([counts.get(a, 0) for a in chars]) / math.log(len(alphabet)))
@@ -363,6 +357,7 @@ def score_alphabet(alphabet, counts):
 
 
 def guess_alphabet(records):
+    """Guess alphabet from an iterable of records."""
     from collections import Counter
     data = numpy.array([list(record[1]) for record in records],
                        dtype='U1').flatten()
@@ -427,6 +422,7 @@ def read_alignment(source, fmt, hmm=True, c=0.9, g=0.1, alphabet=None):  # pylin
 
 @timeit
 def load(source):
+    """Load a frame as bzipped json."""
     import json
     with gopen.readable(source) as fp:
         dd = json.load(fp)
@@ -447,6 +443,11 @@ def scatterplot(X,  # pylint: disable=too-many-arguments
                 size=10,
                 color=None,
                 ax=None):
+    """
+    Scatter plot of points in X.
+
+    Return Axes object.
+    """
     import matplotlib.pyplot as plt
     n, p = X.shape
     if p > 2:

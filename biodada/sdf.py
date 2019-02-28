@@ -1,8 +1,8 @@
+"""SequenceDataFrame class module."""
 import logging
 import numpy
 import pandas
 from pandas import DataFrame
-import gopen
 from biodada.utils import timeit
 from biodada.pipelines import PipelinesMixin
 
@@ -269,6 +269,7 @@ def read_alignment(source, fmt, uppercase=True, c=0.9, g=0.1, alphabet=None):
 def load(source):
     """Load a frame as bzipped json."""
     import json
+    import gopen
     with gopen.readable(source) as fp:
         dd = json.load(fp)
     index = dd['index']

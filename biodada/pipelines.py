@@ -1,3 +1,4 @@
+"""sklearn pipelines for SequenceDataFrames."""
 import logging
 import numpy
 
@@ -97,7 +98,8 @@ class PipelinesMixin(object):  # pytlint: disable=no-init
                               connectivity=connectivity,
                               linkage='ward'))])
 
-    def classifier(self, n_neighbors=5):
+    @staticmethod
+    def classifier(n_neighbors=5):
         """Return a classifier for sequence data.
 
         sklearn KNeighborsClassifier (k-nearest neighbors vote)

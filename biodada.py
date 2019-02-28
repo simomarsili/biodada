@@ -223,7 +223,7 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):  # pylint: disable=too-many-
             Transformed array
         """
         encoder = self.encoder(encoder=encoder, dtype=dtype)
-        return encoder.transform(self.data)
+        return encoder.fit_transform(self.data)
 
     def principal_components(self, n_components=3, pca=None):
         """Return `n_components` principal components from PCA.

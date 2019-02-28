@@ -4,8 +4,8 @@ from setuptools import setup
 # from setuptools import find_packages
 
 NAME = 'biodada'
-PACKAGES = []
-MODULES = ['biodada']
+PACKAGES = ['biodada']
+MODULES = []
 VERSION_FILE = 'version.json'
 SETUP_REQUIRES = []
 INSTALL_REQUIRES = [

@@ -1,156 +1,12 @@
-"""SequenceDataFrame class and related functions."""
-
 import logging
-import pkg_resources
-from functools import wraps
 import numpy
 import pandas
 from pandas import DataFrame
-import gopen  # pylint: disable=import-error
-
-project_name = 'biodada'
-__version__ = pkg_resources.require(project_name)[0].version
-__copyright__ = 'Copyright (C) 2019 Simone Marsili'
-__license__ = 'BSD 3 clause'
-__author__ = 'Simone Marsili <simo.marsili@gmail.com>'
-__all__ = ['SequenceDataFrame', 'read_alignment', 'load', 'ALPHABETS']
+import gopen
+from biodada.utils import timeit
+from biodada.pipelines import PipelinesMixin
 
 logger = logging.getLogger(__name__)
-
-ALPHABETS = {
-    'protein': '-ACDEFGHIKLMNPQRSTVWY',
-    'dna': '-ACGT',
-    'rna': '-ACGU',
-    'protein_u': '-ACDEFGHIKLMNPQRSTVWYBZX',
-    'dna_u': '-ACGTRYMKWSBDHVN',
-    'rna_u': '-ACGURYMKWSBDHVN',
-}
-
-
-def timeit(func):
-    """Timeit decorator."""
-
-    @wraps(func)
-    def timed(*args, **kwargs):
-        import time
-        ts0 = time.time()
-        result = func(*args, **kwargs)
-        ts1 = time.time()
-        logger.debug('%r: %2.4f secs', func, ts1 - ts0)
-        return result
-
-    return timed
-
-
-class PipelinesMixin(object):  # pytlint: disable=no-init
-    """Scikit-learn pipelines for SequenceDataFrame objects."""
-
-    def encoder(self, encoder='one-hot', dtype=None):
-        """
-        Return a transformer encoding sequence data into numeric.
-
-        Parameters
-        ----------
-        encoder : 'one-hot', 'ordinal'
-            sklearn encoder class: OneHotEncoder or OrdinalEncoder
-        dtype : number type
-            Default: numpy.float64 (one-hot), numpy.int8 (ordinal)
-
-        Returns
-        -------
-        sklearn transformer
-
-        """
-        from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
-        categories = [list(self.alphabet)] * (self.shape[1] - 1)
-        if encoder == 'one-hot':
-            return OneHotEncoder(
-                categories=categories, dtype=dtype or numpy.float64)
-        elif encoder == 'ordinal':
-            return OrdinalEncoder(
-                categories=categories, dtype=dtype or numpy.float64)
-
-    def pca(self, n_components=3):
-        """
-        Return a transformer encoding sequence data into principal components.
-
-        The pipeline steps are:
-        - One-hot encoding of sequence data into a sparse matrix
-        - Truncated SVD on the sparse data matrix.
-          Return output data of dimensionality n_components + 3
-        - PCA. Return output of dimensionality n_components.
-
-        Attributes
-        ----------
-        n_components : int
-            Number of components to keep.
-
-        Returns
-        -------
-        sklearn transformer
-
-        """
-        from sklearn.pipeline import Pipeline
-        from sklearn.decomposition import PCA as PCA
-        from sklearn.decomposition import TruncatedSVD as tSVD
-        return Pipeline([('encode', self.encoder()),
-                         ('svd',
-                          tSVD(
-                              n_components=n_components + 3,
-                              algorithm='arpack')),
-                         ('pca', PCA(n_components=n_components))])
-
-    def clustering(self, n_clusters, n_components=3):
-        """Return a cluster estimator for sequence data.
-
-        Agglomerative clustering of sequences in principal components space
-        with Ward's method. Connectivity constraints from the k-neighbors
-        graph.
-
-        Parameters
-        ----------
-        n_custers : int
-            The target number of clusters.
-        n_components : int
-            Number of principal components to keep in the dimensionality
-            reduction step.
-
-        Returns
-        -------
-        cluster pipeline object
-
-        """
-        from sklearn.pipeline import Pipeline
-        from sklearn.neighbors import kneighbors_graph
-        from sklearn.cluster import AgglomerativeClustering
-
-        def connectivity(X):
-            """Return k-neighbors graph."""
-            return kneighbors_graph(X, n_neighbors=10, include_self=False)
-
-        return Pipeline([('pca', self.pca(n_components=n_components)),
-                         ('cluster',
-                          AgglomerativeClustering(
-                              n_clusters=n_clusters,
-                              connectivity=connectivity,
-                              linkage='ward'))])
-
-    def classifier(self, n_neighbors=5):
-        """Return a classifier for sequence data.
-
-        sklearn KNeighborsClassifier (k-nearest neighbors vote)
-
-        Parameters
-        ----------
-        n_neighbors : int, optional (default=5)
-            Number of neighbors to use.
-
-        Returns
-        -------
-        sklearn classifier
-        """
-        from sklearn.neighbors import KNeighborsClassifier
-        return KNeighborsClassifier(n_neighbors=n_neighbors)
 
 
 class SequenceDataFrame(PipelinesMixin, DataFrame):
@@ -350,6 +206,7 @@ def _score_alphabet(alphabet, counts):
 def guess_alphabet(records):
     """Guess alphabet from an iterable of records."""
     from collections import Counter
+    from biodada import ALPHABETS
     data = numpy.array([list(record[1]) for record in records],
                        dtype='U1').flatten()
     counts = Counter(data)
@@ -425,43 +282,3 @@ def load(source):
                            alphabet=dd['alphabet'])
     # sort rows/columns by index and reset column labels
     return df
-
-
-def scatterplot(X,  # pylint: disable=too-many-arguments
-                fig_size=(8, 6),
-                n_points=False,
-                size=10,
-                color=None,
-                ax=None):
-    """
-    Scatter plot of points in X.
-
-    Return Axes object.
-    """
-    import matplotlib.pyplot as plt
-    n, p = X.shape
-    if p > 2:
-        from mpl_toolkits.mplot3d import Axes3D
-        if not ax:
-            fig = plt.figure(1, figsize=fig_size)
-            ax = Axes3D(fig, elev=-150, azim=110)
-    if p == 2:
-        fig, ax = plt.subplots(figsize=fig_size)
-    elif p < 2:
-        raise ValueError('X must be at least 2D')
-    if n_points:
-        idx = numpy.random.choice(range(n), size=n_points, replace=False)
-        X = X[idx]
-    XT = X.T
-    kwargs = {}
-    if color is not None:
-        if n_points:
-            kwargs['c'] = color[idx]
-        else:
-            kwargs['c'] = color
-    kwargs['s'] = size
-    if p == 2:
-        ax.scatter(XT[0], XT[1], **kwargs)
-    else:
-        ax.scatter(XT[0], XT[1], XT[2], **kwargs)
-    return ax

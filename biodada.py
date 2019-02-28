@@ -414,15 +414,16 @@ def load(source):
     import json
     with gopen.readable(source) as fp:
         dd = json.load(fp)
+    index = dd['index']
+    columns = dd['columns']
+    columns.sort()
+    columns = ['id'] + columns[1:]
     df = SequenceDataFrame(([identifier] + list(sequence)
                             for identifier, sequence in dd['records']),
-                           index=dd['index'],
-                           columns=dd['columns'],
+                           index=index.sort(),
+                           columns=columns,
                            alphabet=dd['alphabet'])
-    # sort rows/columns by index
-    df.sort_index(axis=0, inplace=True)
-    df.sort_index(axis=1, inplace=True)
-    df.columns = ['id'] + list(df.columns)[1:]
+    # sort rows/columns by index and reset column labels
     return df
 
 

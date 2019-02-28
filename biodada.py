@@ -135,7 +135,7 @@ class PipelinesMixin(object):  # pytlint: disable=no-init
                               connectivity=connectivity,
                               linkage='ward'))])
 
-    def classifier(self, n_neighbors=3):
+    def classifier(self, n_neighbors=5):
         """Return a classifier for sequence data.
 
         sklearn KNeighborsClassifier (k-nearest neighbors vote)
@@ -172,9 +172,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
         alphabet = kwargs.pop('alphabet', None)
 
         logger.debug('init SequenceDataFrame, alphabet: %r', alphabet)
-
-        if not hasattr(self, 'alphabet'):
-            self.alphabet = None
 
         super().__init__(*args, **kwargs)
 

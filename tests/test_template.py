@@ -27,7 +27,9 @@ def alignment():
 def records():
     import lilbio
     path = os.path.join(tests_dir(), ALIGNMENT)
-    return list(lilbio.parse(path, 'stockholm'))
+    preprocess = lilbio.uppercase_only
+    records = lilbio.parse(path, 'stockholm', func=preprocess)
+    return list(records)
 
 
 @pytest.fixture()
@@ -42,16 +44,15 @@ def test_read_alignment(alignment):
     assert df.shape == (721, 33)
 
 
-"""
 def test_from_records(records):
-    assert 1 == 1
-"""
+    alphabet = biodada.ALPHABETS['protein']
+    df = biodada.SequenceDataFrame.from_sequence_records(records,
+                                                         alphabet=alphabet)
+    assert df.shape == (2366, 40)
 
 
 def test_pca(frame):
     import numpy
-    # path = os.path.join(tests_dir(), ALIGNMENT)
-    # df = biodada.read_alignment(alignment, 'stockholm')
     pca_transformer = frame.pca(3).fit(frame.data)
     variance = pca_transformer.named_steps['pca'].explained_variance_
     assert numpy.isclose(variance.sum(), 3.8116467693860563)

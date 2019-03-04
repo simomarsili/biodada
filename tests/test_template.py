@@ -3,7 +3,7 @@ import pytest
 import biodada
 
 
-ALIGNMENT = 'PF17907.full.gz'
+ALIGNMENT_FILE = 'PF17907.full.gz'
 
 
 def tests_dir():
@@ -20,13 +20,13 @@ def tests_dir():
 
 @pytest.fixture()
 def alignment():
-    return os.path.join(tests_dir(), ALIGNMENT)
+    return os.path.join(tests_dir(), ALIGNMENT_FILE)
 
 
 @pytest.fixture()
 def records():
     import lilbio
-    path = os.path.join(tests_dir(), ALIGNMENT)
+    path = os.path.join(tests_dir(), ALIGNMENT_FILE)
     preprocess = lilbio.uppercase_only
     records = lilbio.parse(path, 'stockholm', func=preprocess)
     return list(records)
@@ -34,12 +34,11 @@ def records():
 
 @pytest.fixture()
 def frame():
-    path = os.path.join(tests_dir(), ALIGNMENT)
+    path = os.path.join(tests_dir(), ALIGNMENT_FILE)
     return biodada.read_alignment(path, 'stockholm')
 
 
 def test_read_alignment(alignment):
-    # path = os.path.join(tests_dir(), ALIGNMENT)
     df = biodada.read_alignment(alignment, 'stockholm')
     assert df.shape == (721, 33)
 

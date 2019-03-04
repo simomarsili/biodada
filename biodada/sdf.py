@@ -44,12 +44,6 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
     def _constructor(self):
         return SequenceDataFrame
 
-    @staticmethod
-    def check_alphabet_records(records, alphabet):
-        """Filter out records not consistent with alphabet."""
-        alphabet_set = set(alphabet)
-        return (r for r in records if set(r[1]) <= alphabet_set)
-
     @classmethod
     def from_sequence_records(cls, records, alphabet=None):
         """
@@ -57,8 +51,11 @@ class SequenceDataFrame(PipelinesMixin, DataFrame):
 
         If alphabet, filter out records with symbols not in alphabet.
         """
+        from biodada.alphabets import check_alphabet, check_alphabet_records
         if alphabet:
-            records = cls.check_alphabet_records(records, alphabet)
+            # check alphabet first
+            alphabet = check_alphabet(alphabet)
+            records = check_alphabet_records(records, alphabet)
         return cls(([identifier] + list(sequence)
                     for identifier, sequence in records),
                    alphabet=alphabet)
@@ -194,32 +191,6 @@ def filter_gaps(frame, threshold=0.1):
     return frame
 
 
-def _score_alphabet(alphabet, counts):
-    """Score for alphabet given counts."""
-    import math
-    chars = set(alphabet) - set('*-')
-    score = (sum([counts.get(a, 0) for a in chars]) / math.log(len(alphabet)))
-    logger.debug('alphabet %r score %r', alphabet, score)
-    return score
-
-
-def guess_alphabet(records):
-    """Guess alphabet from an iterable of records."""
-    from collections import Counter
-    from biodada import ALPHABETS
-    data = numpy.array([list(record[1]) for record in records],
-                       dtype='U1').flatten()
-    counts = Counter(data)
-    max_score = float('-inf')
-    for key, alphabet in ALPHABETS.items():
-        score = _score_alphabet(alphabet, counts)
-        if score > max_score:
-            max_score = score
-            guess = key
-    logger.info('Alphabet guess: %r', guess)
-    return ALPHABETS[guess]
-
-
 @timeit
 def read_alignment(source, fmt, uppercase=True, c=0.9, g=0.1, alphabet=None):
     """Parse a pandas dataframe from an alignment file.
@@ -243,6 +214,7 @@ def read_alignment(source, fmt, uppercase=True, c=0.9, g=0.1, alphabet=None):
         A pandas dataframe.
     """
     import itertools
+    from biodada.alphabets import check_alphabet, guess_alphabet
     # parse records
     records = parse_records(source, fmt, uppercase=uppercase)
 
@@ -254,6 +226,8 @@ def read_alignment(source, fmt, uppercase=True, c=0.9, g=0.1, alphabet=None):
         records_head = itertools.islice(records, 50)
         alphabet = guess_alphabet(records_head)
         records = itertools.chain(records_head, records)
+    else:
+        alphabet = check_alphabet(alphabet)
 
     # convert records to a dataframe
     df = SequenceDataFrame.from_sequence_records(records, alphabet=alphabet)

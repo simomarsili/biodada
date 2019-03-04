@@ -173,14 +173,14 @@ def parse_records(source, frmt, uppercase=True):
     return lilbio.parse(source, frmt, func=preprocess)
 
 
-def filter_redundant(records, threshold=0.9):
+def non_redundant_records(records, threshold=0.9):
     """Return an iterable of non-redundant records."""
     import pcdhit  # pylint: disable=import-error
     return pcdhit.filter(records, threshold)
 
 
 @timeit
-def filter_gaps(frame, threshold=0.1):
+def ungap_frame(frame, threshold=0.1):
     """Return a copy of frame after removing gappy records/positions."""
     import cleanset  # pylint: disable=import-error
     logger.debug('start filtering gaps')
@@ -220,7 +220,7 @@ def read_alignment(source, fmt, uppercase=True, c=0.9, g=0.1, alphabet=None):
 
     # filter redundant records via cdhit
     if c:
-        records = filter_redundant(records, c)
+        records = non_redundant_records(records, c)
 
     if not alphabet:
         records_head = itertools.islice(records, 50)
@@ -234,7 +234,7 @@ def read_alignment(source, fmt, uppercase=True, c=0.9, g=0.1, alphabet=None):
 
     # reduce gappy records/positions
     if g:
-        df = filter_gaps(df, g)
+        df = ungap_frame(df, g)
 
     return df
 

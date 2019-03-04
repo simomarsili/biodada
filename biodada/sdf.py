@@ -1,6 +1,5 @@
 """SequenceDataFrame class module."""
 import logging
-import numpy
 import pandas
 from pandas import DataFrame
 from biodada.utils import timeit

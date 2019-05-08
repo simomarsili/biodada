@@ -1,11 +1,13 @@
+# -*- coding: utf-8 -*-
 """sklearn pipelines for SequenceDataFrames."""
 import logging
+
 import numpy
 
 logger = logging.getLogger(__name__)
 
 
-class PipelinesMixin(object):  # pytlint: disable=no-init
+class PipelinesMixin:  # pytlint: disable=no-init
     """Scikit-learn pipelines for SequenceDataFrame objects."""
 
     def encoder(self, encoder='one-hot', dtype=None):
@@ -26,12 +28,14 @@ class PipelinesMixin(object):  # pytlint: disable=no-init
         """
         from sklearn.preprocessing import OrdinalEncoder, OneHotEncoder
         categories = [list(self.alphabet)] * (self.shape[1] - 1)
-        if encoder == 'one-hot':
-            return OneHotEncoder(
-                categories=categories, dtype=dtype or numpy.float64)
+        if encoder == 'one-hot':  # pylint: disable=no-else-return
+            return OneHotEncoder(categories=categories,
+                                 dtype=dtype or numpy.float64)
         elif encoder == 'ordinal':
-            return OrdinalEncoder(
-                categories=categories, dtype=dtype or numpy.float64)
+            return OrdinalEncoder(categories=categories,
+                                  dtype=dtype or numpy.float64)
+        else:
+            raise ValueError('Valid encoders are: "ordinal" and "one-hot"')
 
     def pca(self, n_components=3):
         """
@@ -54,13 +58,12 @@ class PipelinesMixin(object):  # pytlint: disable=no-init
 
         """
         from sklearn.pipeline import Pipeline
-        from sklearn.decomposition import PCA as PCA
+        from sklearn.decomposition import PCA
         from sklearn.decomposition import TruncatedSVD as tSVD
         return Pipeline([('encode', self.encoder()),
                          ('svd',
-                          tSVD(
-                              n_components=n_components + 3,
-                              algorithm='arpack')),
+                          tSVD(n_components=n_components + 3,
+                               algorithm='arpack')),
                          ('pca', PCA(n_components=n_components))])
 
     def clustering(self, n_clusters, n_components=3):
@@ -93,10 +96,9 @@ class PipelinesMixin(object):  # pytlint: disable=no-init
 
         return Pipeline([('pca', self.pca(n_components=n_components)),
                          ('cluster',
-                          AgglomerativeClustering(
-                              n_clusters=n_clusters,
-                              connectivity=connectivity,
-                              linkage='ward'))])
+                          AgglomerativeClustering(n_clusters=n_clusters,
+                                                  connectivity=connectivity,
+                                                  linkage='ward'))])
 
     @staticmethod
     def classifier(n_neighbors=5):
